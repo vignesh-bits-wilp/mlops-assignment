@@ -137,6 +137,9 @@ data/external/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/external/.gitkeep
+!data/raw/*.dvc
+!data/processed/*.dvc
+!data/external/*.dvc
 
 # Model files
 saved_models/*
