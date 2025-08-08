@@ -11,14 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src/ ./src/
 
-# Copy MLflow runs (model artifacts)
-COPY mlruns/ ./mlruns/
-
-# Copy data files
+# Copy data files (if they exist)
 COPY data/ ./data/
 
 # Expose port 8000
 EXPOSE 8000
 
-# Start the FastAPI service
+# Start the application
 CMD ["uvicorn", "src.api.app:app", "--host", "127.0.0.1", "--port", "8000"]

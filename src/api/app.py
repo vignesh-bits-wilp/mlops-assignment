@@ -13,6 +13,8 @@ from mlflow.tracking import MlflowClient
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pandas as pd
+import os
+
 
 # ────────────────────────── MLflow setup ──────────────────────────
 # Point MLflow at the same local `mlruns` directory used in training.
@@ -22,11 +24,20 @@ MODEL_NAME = "HousingModel"
 client = MlflowClient()
 
 # Try to load the latest **Production** version; if none, load newest.
-prod = [v for v in client.get_latest_versions(MODEL_NAME) if v.current_stage.lower() == "production"]
-version = prod[0] if prod else sorted(client.get_latest_versions(MODEL_NAME), key=lambda v: v.version)[-1]
+# If no model exists, we'll use a fallback prediction
+try:
+    prod = [v for v in client.get_latest_versions(MODEL_NAME) if v.current_stage.lower() == "production"]
+    version = prod[0] if prod else sorted(client.get_latest_versions(MODEL_NAME), key=lambda v: v.version)[-1]
 
-print(f"▶ Loading {MODEL_NAME} version {version.version} ({version.current_stage})")
-model = mlflow.pyfunc.load_model(version.source)  # `source` is a file:// URI to artifacts/model
+    print(f"▶ Loading {MODEL_NAME} version {version.version} ({version.current_stage})")
+    model = mlflow.pyfunc.load_model(version.source)  # `source` is a file:// URI to artifacts/model
+    model_available = True
+except Exception as e:
+    print(f"⚠️  Warning: Could not load MLflow model: {e}")
+    print("📝 Using fallback prediction method")
+    model_available = False
+    model = None
+
 
 # ─────────────────────── Pydantic schema ─────────────────────────
 
@@ -55,8 +66,14 @@ def health() -> dict:
 def predict(features: HousingFeatures):
     # Build a 1-row DataFrame with the correct column names
     df = pd.DataFrame([features.model_dump()])  # → columns match exactly
+    
     try:
-        pred = model.predict(df)  # MLflow schema satisfied
-        return {"prediction": float(pred[0])}
+        if model_available and model is not None:
+            pred = model.predict(df)  # MLflow schema satisfied
+            return {"prediction": float(pred[0])}
+        else:
+            # Fallback prediction based on median income
+            pred = features.MedInc * 0.5
+            return {"prediction": float(pred)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

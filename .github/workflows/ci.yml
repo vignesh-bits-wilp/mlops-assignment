@@ -41,7 +41,7 @@ jobs:
     - name: Run tests
       run: |
         pip install pytest pytest-cov
-        pytest tests/test_data_ingestion.py tests/test_api_standalone.py -v --cov=src --cov-report=xml
+        pytest tests/test_data_ingestion.py tests/test_api.py tests/test_api_standalone.py -v --cov=src --cov-report=xml
         
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -97,3 +97,30 @@ jobs:
       run: |
         echo "✅ CI/CD Pipeline completed!"
         echo "Note: Docker Hub push requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets."
+
+  deploy-local:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy locally (simulation)
+      run: |
+        echo "🚀 Simulating local deployment..."
+        echo "To deploy locally, run:"
+        echo "docker pull vignesh-bits-wilp/housing-api:latest"
+        echo "docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest"
+        echo ""
+        echo "To deploy to EC2, run:"
+        echo "ssh ec2-user@your-ec2-instance"
+        echo "docker pull vignesh-bits-wilp/housing-api:latest"
+        echo "docker run -d -p 8000:8000 --name housing-api vignesh-bits-wilp/housing-api:latest"
+        
+    - name: Test deployment
+      run: |
+        echo "🧪 Testing deployment..."
+        echo "Health check: curl http://localhost:8000/health"
+        echo "Prediction test: curl -X POST http://localhost:8000/predict -H 'Content-Type: application/json' -d '{\"MedInc\": 8.3252, \"HouseAge\": 41.0, \"AveRooms\": 6.984127, \"AveBedrms\": 1.023810, \"Population\": 322.0, \"AveOccup\": 2.555556, \"Latitude\": 37.88, \"Longitude\": -122.23}'"

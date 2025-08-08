@@ -20,6 +20,7 @@ class TestAPI:
         return mock_model
 
     @patch('src.api.app.model')
+    @patch('src.api.app.model_available', True)
     def test_health_endpoint(self, mock_model, client):
         """Test that the health endpoint returns the expected response."""
         response = client.get("/health")
@@ -27,8 +28,9 @@ class TestAPI:
         assert response.json() == {"status": "ok"}
 
     @patch('src.api.app.model')
-    def test_predict_endpoint_valid_data(self, mock_model, client):
-        """Test that the predict endpoint works with valid data."""
+    @patch('src.api.app.model_available', True)
+    def test_predict_endpoint_valid_data_with_model(self, mock_model, client):
+        """Test that the predict endpoint works with valid data when model is available."""
         # Configure mock to return a prediction
         mock_model.predict.return_value = [4.526]
         
@@ -50,7 +52,32 @@ class TestAPI:
         assert "prediction" in result
         assert isinstance(result["prediction"], (int, float))
 
+    @patch('src.api.app.model_available', False)
+    def test_predict_endpoint_valid_data_without_model(self, client):
+        """Test that the predict endpoint works with valid data when no model is available."""
+        test_features = {
+            "MedInc": 8.3252,
+            "HouseAge": 41.0,
+            "AveRooms": 6.984127,
+            "AveBedrms": 1.023810,
+            "Population": 322.0,
+            "AveOccup": 2.555556,
+            "Latitude": 37.88,
+            "Longitude": -122.23
+        }
+
+        response = client.post("/predict", json=test_features)
+        assert response.status_code == 200
+
+        result = response.json()
+        assert "prediction" in result
+        assert isinstance(result["prediction"], (int, float))
+        # Check fallback prediction (MedInc * 0.5)
+        expected_prediction = test_features["MedInc"] * 0.5
+        assert result["prediction"] == expected_prediction
+
     @patch('src.api.app.model')
+    @patch('src.api.app.model_available', True)
     def test_predict_endpoint_missing_fields(self, mock_model, client):
         """Test that the predict endpoint returns an error for missing fields."""
         test_features = {
@@ -63,6 +90,7 @@ class TestAPI:
         assert response.status_code == 422  # Validation error
 
     @patch('src.api.app.model')
+    @patch('src.api.app.model_available', True)
     def test_predict_endpoint_invalid_data_types(self, mock_model, client):
         """Test that the predict endpoint returns an error for invalid data types."""
         test_features = {

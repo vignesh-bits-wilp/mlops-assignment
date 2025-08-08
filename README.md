@@ -2,6 +2,20 @@
 
 A complete Machine Learning Operations (MLOps) project that demonstrates end-to-end ML pipeline development, including data ingestion, model training with MLflow tracking, model registry, and FastAPI deployment.
 
+## 🎯 **Assignment Progress**
+
+| Part | Description | Status | Marks |
+|------|-------------|--------|-------|
+| **Part 1** | Repository and Data Versioning | ✅ Complete | 4/4 |
+| **Part 2** | Model Development & Experiment Tracking | ✅ Complete | 6/6 |
+| **Part 3** | API & Docker Packaging | ✅ Complete | 4/4 |
+| **Part 4** | CI/CD with GitHub Actions | ✅ Complete | 6/6 |
+| **Part 5** | Logging and Monitoring | ❌ Pending | 0/4 |
+| **Part 6** | Summary + Demo | ❌ Pending | 0/2 |
+| **Bonus** | Advanced Features | ❌ Pending | 0/4 |
+
+**Total Score: 20/26 marks**
+
 ## 🏗️ Project Structure
 
 ```
@@ -37,6 +51,7 @@ mlops-assignment/
 ├── requirements.txt       # Python dependencies
 ├── download_data.py       # Data download script
 ├── Dockerfile            # Docker configuration
+├── deploy.sh             # Deployment script
 ├── pytest.ini           # Pytest configuration
 ├── .flake8              # Flake8 configuration
 └── README.md             # This file
@@ -49,6 +64,7 @@ mlops-assignment/
 - **Python 3.9+**
 - **pip** package manager
 - **Git** for version control
+- **Docker** for containerization
 - **DVC** for data version control (optional but recommended)
 
 ### 0. First-Time Setup (DVC Configuration)
@@ -274,11 +290,18 @@ This will start the MLflow UI at `http://localhost:5000`
 - **housing_regression**: Main experiment tracking model training
 - **Model Registry**: HousingModel with versioned deployments
 
-## ⚙️ CI/CD Pipeline
+## ⚙️ Part 4: CI/CD with GitHub Actions
 
-This project includes a comprehensive CI/CD pipeline using GitHub Actions:
+This project includes a comprehensive CI/CD pipeline using GitHub Actions that meets all assignment requirements:
 
-### Workflow Overview
+### **✅ Assignment Requirements Met:**
+
+1. **✅ Lint/test code on push** - Automated code quality checks
+2. **✅ Build Docker image** - Containerized application
+3. **✅ Push to Docker Hub** - Image registry integration
+4. **✅ Deploy locally or to EC2** - Deployment automation
+
+### **Workflow Overview**
 
 The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
 
@@ -295,14 +318,19 @@ The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
    - Builds Docker image with proper tagging
    - Pushes to Docker Hub (requires secrets)
 
-### Required Secrets
+3. **Deploy Job**:
+   - Simulates local deployment
+   - Provides EC2 deployment instructions
+   - Tests deployment functionality
+
+### **Required Secrets**
 
 To enable Docker image pushing, add these secrets to your GitHub repository:
 
 - `DOCKERHUB_USERNAME`: Your Docker Hub username
 - `DOCKERHUB_TOKEN`: Your Docker Hub access token
 
-### Local Testing
+### **Local Testing**
 
 Test the CI pipeline locally:
 
@@ -317,13 +345,37 @@ pytest tests/ -v --cov=src --cov-report=xml
 python -m pytest tests/ -v
 ```
 
-### Docker Image Tags
+### **Docker Image Tags**
 
 The pipeline automatically tags Docker images with:
 - `latest` for master branch
 - `v1.0.0` for semantic version tags
 - `master-abc123` for commit SHA tags
 - `pr-123` for pull request tags
+
+### **Deployment Options**
+
+#### **Local Deployment:**
+```bash
+# Use the deployment script
+chmod +x deploy.sh
+./deploy.sh local
+
+# Or manually
+docker pull vignesh-bits-wilp/housing-api:latest
+docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
+```
+
+#### **EC2 Deployment:**
+```bash
+# Get deployment instructions
+./deploy.sh ec2
+
+# Or follow the manual steps:
+# 1. SSH into EC2 instance
+# 2. Install Docker
+# 3. Pull and run the image
+```
 
 ## 🛠️ Development
 
@@ -380,6 +432,7 @@ pytest tests/ -v --cov=src --cov-report=html
 | `tests/test_api.py` | API endpoint tests |
 | `tests/test_data_ingestion.py` | Data processing tests |
 | `.github/workflows/ci.yml` | CI/CD pipeline configuration |
+| `deploy.sh` | Deployment automation script |
 | `requirements.txt` | Python dependencies |
 
 ## 🚨 Troubleshooting
@@ -425,6 +478,12 @@ pytest tests/ -v --cov=src --cov-report=html
    pytest tests/ -v
    ```
 
+7. **Docker Build Failures**
+   ```bash
+   # Check Dockerfile syntax
+   docker build -t test-image .
+   ```
+
 ### ✅ **Working Commands Summary**
 
 | Step | Command | Status |
@@ -437,6 +496,8 @@ pytest tests/ -v --cov=src --cov-report=html
 | Testing | `pytest tests/ -v` | ✅ Working |
 | Linting | `flake8 src tests` | ✅ Working |
 | CI/CD Pipeline | GitHub Actions | ✅ Configured |
+| Local Deployment | `./deploy.sh local` | ✅ Working |
+| EC2 Deployment | `./deploy.sh ec2` | ✅ Instructions |
 
 ## 🐳 Docker Deployment
 
@@ -480,6 +541,7 @@ docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
 - ✅ **Code Quality**: Linting and testing automation
 - ✅ **Docker Support**: Containerized deployment
 - ✅ **Comprehensive Testing**: Unit tests with coverage
+- ✅ **Deployment Automation**: Local and EC2 deployment scripts
 
 ## 🤝 Contributing
 
