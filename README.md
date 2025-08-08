@@ -283,7 +283,7 @@ This project includes a comprehensive CI/CD pipeline using GitHub Actions:
 The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
 
 1. **Lint & Test Job**:
-   - Runs on every push to `main` and pull requests
+   - Runs on every push to `master` and pull requests
    - Sets up Python 3.9
    - Installs dependencies with caching
    - Runs `flake8` for code linting
@@ -291,7 +291,7 @@ The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
    - Uploads coverage to Codecov
 
 2. **Build & Push Job**:
-   - Runs only on successful pushes to `main`
+   - Runs only on successful pushes to `master`
    - Builds Docker image with proper tagging
    - Pushes to Docker Hub (requires secrets)
 
@@ -320,9 +320,9 @@ python -m pytest tests/ -v
 ### Docker Image Tags
 
 The pipeline automatically tags Docker images with:
-- `latest` for main branch
+- `latest` for master branch
 - `v1.0.0` for semantic version tags
-- `main-abc123` for commit SHA tags
+- `master-abc123` for commit SHA tags
 - `pr-123` for pull request tags
 
 ## 🛠️ Development
