@@ -83,7 +83,7 @@ jobs:
         python src/models/train.py
         
     - name: Upload MLflow artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mlruns
         path: mlruns/
@@ -99,7 +99,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Download MLflow artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: mlruns
         path: mlruns/
