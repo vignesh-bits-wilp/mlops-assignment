@@ -66,6 +66,9 @@ Features: ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccu
 # Navigate to ML directory
 cd ml
 
+# Copy data to expected location (if needed)
+Copy-Item -Path "../data/raw/california_housing.csv" -Destination "data/raw/" -Force
+
 # Run data ingestion and cleaning
 python src/src/data_ingestion.py
 ```
@@ -88,12 +91,12 @@ python src/src/train.py
 
 **Expected Output:**
 ```
-2025-08-08 20:14:05 [INFO] LinearRegression finished: R² = 0.576
-2025-08-08 20:14:32 [INFO] DecisionTreeRegressor finished: R² = 0.600
-2025-08-08 20:14:32 [INFO] Best run a486653584434b3f83e7b25188c65a82 with R² = 0.600
-2025-08-08 20:14:33 [INFO] Registered HousingModel version 6
-2025-08-08 20:14:33 [INFO] Promoted version 6 to Production
-2025-08-08 20:14:33 [INFO] ✅ Training & registration complete.
+2025-08-08 22:22:52 [INFO] LinearRegression finished: R² = 0.576
+2025-08-08 22:22:58 [INFO] DecisionTreeRegressor finished: R² = 0.600
+2025-08-08 22:22:58 [INFO] Best run d6236629134941f3b9251478e990ed9c with R² = 0.600
+2025-08-08 22:22:58 [INFO] Registered HousingModel version 7
+2025-08-08 22:22:58 [INFO] Promoted version 7 to Production
+2025-08-08 22:22:58 [INFO] ✅ Training & registration complete.
 ```
 
 ### 5. Start API Service
@@ -108,9 +111,9 @@ uvicorn src.src.app:app --host 127.0.0.1 --port 8000
 
 **Expected Output:**
 ```
-▶ Loading HousingModel version 6 (Production)
-Downloading artifacts: 100%|████████████████████████████████████████████| 7/7 [00:00<00:00, 777.79it/s]
-INFO:     Started server process [20388]
+▶ Loading HousingModel version 7 (Production)
+Downloading artifacts: 100%|████████████████████████████████████████████| 7/7 [00:00<00:00, 1621.48it/s]
+INFO:     Started server process [17936]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
@@ -284,13 +287,30 @@ python -m pytest tests/
 
 ### Common Issues
 
-1. **Port Already in Use**
+1. **Data File Not Found**
+   ```bash
+   # Copy data to expected location
+   cd ml
+   Copy-Item -Path "../data/raw/california_housing.csv" -Destination "data/raw/" -Force
+   ```
+
+2. **API Service Module Import Error**
+   ```bash
+   # ❌ This will fail from root directory:
+   uvicorn src.src.app:app --host 127.0.0.1 --port 8000
+   
+   # ✅ This works from ml directory:
+   cd ml
+   uvicorn src.src.app:app --host 127.0.0.1 --port 8000
+   ```
+
+3. **Port Already in Use**
    ```bash
    # Try different port
    uvicorn src.src.app:app --host 127.0.0.1 --port 8001
    ```
 
-2. **MLflow Model Not Found**
+4. **MLflow Model Not Found**
    ```bash
    # Ensure you're in the ml directory
    cd ml
@@ -298,16 +318,25 @@ python -m pytest tests/
    cp -r mlruns ../service/
    ```
 
-3. **DVC Errors**
+5. **DVC Errors**
    - DVC errors are expected if not configured
    - Data processing will still work without DVC
 
-4. **Module Import Errors**
+6. **Module Import Errors**
    ```bash
    # Ensure you're in the correct directory
    cd ml
    python src/src/train.py
    ```
+
+### ✅ **Working Commands Summary**
+
+| Step | Command | Directory | Status |
+|------|---------|-----------|--------|
+| Data Download | `python download_data.py` | root | ✅ Working |
+| Data Processing | `cd ml && python src/src/data_ingestion.py` | ml | ✅ Working |
+| Model Training | `cd ml && python src/src/train.py` | ml | ✅ Working |
+| API Service | `cd ml && uvicorn src.src.app:app --host 127.0.0.1 --port 8000` | ml | ✅ Working |
 
 ## 📈 Project Features
 
@@ -328,7 +357,3 @@ python -m pytest tests/
 ## 📄 License
 
 [Add your license here]
-
----
-
-**Happy MLOps! 🚀**
