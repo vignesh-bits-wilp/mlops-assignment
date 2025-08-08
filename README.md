@@ -2,20 +2,6 @@
 
 A complete Machine Learning Operations (MLOps) project that demonstrates end-to-end ML pipeline development, including data ingestion, model training with MLflow tracking, model registry, and FastAPI deployment.
 
-## 🎯 **Assignment Progress**
-
-| Part | Description | Status | Marks |
-|------|-------------|--------|-------|
-| **Part 1** | Repository and Data Versioning | ✅ Complete | 4/4 |
-| **Part 2** | Model Development & Experiment Tracking | ✅ Complete | 6/6 |
-| **Part 3** | API & Docker Packaging | ✅ Complete | 4/4 |
-| **Part 4** | CI/CD with GitHub Actions | ✅ Complete | 6/6 |
-| **Part 5** | Logging and Monitoring | ❌ Pending | 0/4 |
-| **Part 6** | Summary + Demo | ❌ Pending | 0/2 |
-| **Bonus** | Advanced Features | ❌ Pending | 0/4 |
-
-**Total Score: 20/26 marks**
-
 ## 🏗️ Project Structure
 
 ```
@@ -290,18 +276,11 @@ This will start the MLflow UI at `http://localhost:5000`
 - **housing_regression**: Main experiment tracking model training
 - **Model Registry**: HousingModel with versioned deployments
 
-## ⚙️ Part 4: CI/CD with GitHub Actions
+## ⚙️ CI/CD Pipeline
 
-This project includes a comprehensive CI/CD pipeline using GitHub Actions that meets all assignment requirements:
+This project includes a comprehensive CI/CD pipeline using GitHub Actions:
 
-### **✅ Assignment Requirements Met:**
-
-1. **✅ Lint/test code on push** - Automated code quality checks
-2. **✅ Build Docker image** - Containerized application
-3. **✅ Push to Docker Hub** - Image registry integration
-4. **✅ Deploy locally or to EC2** - Deployment automation
-
-### **Workflow Overview**
+### Workflow Overview
 
 The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
 
@@ -323,14 +302,14 @@ The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
    - Provides EC2 deployment instructions
    - Tests deployment functionality
 
-### **Required Secrets**
+### Required Secrets
 
 To enable Docker image pushing, add these secrets to your GitHub repository:
 
 - `DOCKERHUB_USERNAME`: Your Docker Hub username
 - `DOCKERHUB_TOKEN`: Your Docker Hub access token
 
-### **Local Testing**
+### Local Testing
 
 Test the CI pipeline locally:
 
@@ -345,7 +324,7 @@ pytest tests/ -v --cov=src --cov-report=xml
 python -m pytest tests/ -v
 ```
 
-### **Docker Image Tags**
+### Docker Image Tags
 
 The pipeline automatically tags Docker images with:
 - `latest` for master branch
@@ -353,7 +332,7 @@ The pipeline automatically tags Docker images with:
 - `master-abc123` for commit SHA tags
 - `pr-123` for pull request tags
 
-### **Deployment Options**
+### Deployment Options
 
 #### **Local Deployment:**
 ```bash
@@ -484,20 +463,19 @@ pytest tests/ -v --cov=src --cov-report=html
    docker build -t test-image .
    ```
 
-### ✅ **Working Commands Summary**
+### Working Commands Summary
 
-| Step | Command | Status |
-|------|---------|--------|
-| DVC Setup | `dvc init && dvc add data/*` | ✅ Optional |
-| Data Download | `python download_data.py` | ✅ Working |
-| Data Processing | `python src/data/data_ingestion.py` | ✅ Working |
-| Model Training | `python src/models/train.py` | ✅ Working |
-| API Service | `uvicorn src.api.app:app --host 127.0.0.1 --port 8000` | ✅ Working |
-| Testing | `pytest tests/ -v` | ✅ Working |
-| Linting | `flake8 src tests` | ✅ Working |
-| CI/CD Pipeline | GitHub Actions | ✅ Configured |
-| Local Deployment | `./deploy.sh local` | ✅ Working |
-| EC2 Deployment | `./deploy.sh ec2` | ✅ Instructions |
+| Step | Command |
+|------|---------|
+| DVC Setup | `dvc init && dvc add data/*` |
+| Data Download | `python download_data.py` |
+| Data Processing | `python src/data/data_ingestion.py` |
+| Model Training | `python src/models/train.py` |
+| API Service | `uvicorn src.api.app:app --host 127.0.0.1 --port 8000` |
+| Testing | `pytest tests/ -v` |
+| Linting | `flake8 src tests` |
+| Local Deployment | `./deploy.sh local` |
+| EC2 Deployment | `./deploy.sh ec2` |
 
 ## 🐳 Docker Deployment
 
@@ -526,22 +504,6 @@ docker pull vignesh-bits-wilp/housing-api:latest
 # Run the containerized service
 docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
 ```
-
-## 📈 Project Features
-
-- ✅ **Data Pipeline**: Automated download and cleaning
-- ✅ **Model Training**: MLflow-tracked experiments
-- ✅ **Model Registry**: Versioned model management
-- ✅ **API Service**: FastAPI prediction endpoint
-- ✅ **Experiment Tracking**: MLflow integration
-- ✅ **Production Deployment**: Model promotion workflow
-- ✅ **Clean Architecture**: Well-organized source code structure
-- ✅ **Data Version Control**: DVC integration (optional)
-- ✅ **CI/CD Pipeline**: Automated testing and deployment
-- ✅ **Code Quality**: Linting and testing automation
-- ✅ **Docker Support**: Containerized deployment
-- ✅ **Comprehensive Testing**: Unit tests with coverage
-- ✅ **Deployment Automation**: Local and EC2 deployment scripts
 
 ## 🤝 Contributing
 
