@@ -1,4 +1,4 @@
-# src/config.py
+# src/utils/config.py
 import os
 
 # Data & model paths

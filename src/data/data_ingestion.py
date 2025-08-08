@@ -29,8 +29,12 @@ def ingest_and_clean_data(
     # DVC track both files
     for file in [raw_path, cleaned_path]:
         print(f"Adding {file} to DVC tracking...")
-        subprocess.run(["dvc", "add", file], check=True)
-    print("DVC tracking complete.")
+        try:
+            subprocess.run(["dvc", "add", file], check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print(f"Warning: DVC tracking failed for {file}")
+            print("This is normal if the file is already tracked by Git or DVC is not configured.")
+    print("Data ingestion complete.")
 
 if __name__ == "__main__":
     ingest_and_clean_data()

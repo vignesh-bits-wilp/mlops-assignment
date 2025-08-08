@@ -1,4 +1,4 @@
-# src/app.py
+# src/api/app.py
 """
 FastAPI service that serves the most-recent **Production** version of
 `HousingModel` (logged by train.py and stored in ./mlruns).

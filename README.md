@@ -6,28 +6,33 @@ A complete Machine Learning Operations (MLOps) project that demonstrates end-to-
 
 ```
 mlops-assignment/
-├── data/                          # Data files
-│   └── raw/                      # Raw data files
-│       └── california_housing.csv
-├── ml/                           # Machine Learning components
-│   ├── src/                      # ML source code
-│   │   └── src/                  # Actual source files
-│   │       ├── train.py          # Model training script
-│   │       ├── data_ingestion.py # Data processing
-│   │       ├── app.py            # FastAPI service
-│   │       ├── config.py         # Configuration
-│   │       └── __init__.py
-│   ├── mlruns/                   # MLflow tracking
-│   └── data/                     # Processed data
-│       ├── raw/
-│       └── processed/
-├── service/                      # API service
-│   ├── src/                      # Service source
-│   └── mlruns/                   # MLflow runs for service
-├── dvc/                          # DVC configuration
-├── requirements.txt              # Python dependencies
-├── download_data.py              # Data download script
-└── README.md                     # This file
+├── src/                    # Source code
+│   ├── data/              # Data processing
+│   │   ├── __init__.py
+│   │   └── data_ingestion.py
+│   ├── models/            # Model training
+│   │   ├── __init__.py
+│   │   └── train.py
+│   ├── api/               # FastAPI service
+│   │   ├── __init__.py
+│   │   └── app.py
+│   ├── utils/             # Utilities
+│   │   ├── __init__.py
+│   │   └── config.py
+│   └── __init__.py
+├── data/                  # Data files
+│   ├── raw/              # Raw data files
+│   │   └── california_housing.csv
+│   └── processed/        # Processed data files
+│       └── cleaned.csv
+├── models/                # Trained models (future use)
+├── mlruns/                # MLflow tracking
+├── tests/                 # Tests (future use)
+├── infra/                 # Infrastructure
+├── requirements.txt       # Python dependencies
+├── download_data.py       # Data download script
+├── Dockerfile            # Docker configuration
+└── README.md             # This file
 ```
 
 ## 🚀 Quick Start
@@ -37,6 +42,29 @@ mlops-assignment/
 - **Python 3.9+**
 - **pip** package manager
 - **Git** for version control
+- **DVC** for data version control (optional but recommended)
+
+### 0. First-Time Setup (DVC Configuration)
+
+If you're setting up the project for the first time, you'll need to initialize DVC for data version control:
+
+```bash
+# Install DVC (if not already installed)
+pip install dvc
+
+# Initialize DVC in the project
+dvc init
+
+# Add data files to DVC tracking
+dvc add data/raw/california_housing.csv
+dvc add data/processed/cleaned.csv
+
+# Commit DVC files to Git
+git add .dvc .dvcignore
+git commit -m "Add data files to DVC tracking"
+```
+
+**Note:** If you don't want to use DVC, the data processing will still work, but you'll see warning messages about DVC not being configured.
 
 ### 1. Install Dependencies
 
@@ -63,57 +91,65 @@ Features: ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccu
 ### 3. Process Data
 
 ```bash
-# Navigate to ML directory
-cd ml
-
-# Copy data to expected location (if needed)
-Copy-Item -Path "../data/raw/california_housing.csv" -Destination "data/raw/" -Force
-
 # Run data ingestion and cleaning
-python src/src/data_ingestion.py
+python src/data/data_ingestion.py
 ```
 
-**Expected Output:**
+**Expected Output (with DVC configured):**
 ```
 Loading raw data from data/raw/california_housing.csv...
 Raw data shape: (20640, 9)
 Cleaned data shape (after dropna): (20640, 9)
 Cleaned data saved to data/processed/cleaned.csv
-DVC tracking complete.
+Adding data/raw/california_housing.csv to DVC tracking...
+100% Adding...|████████████████████████████████████████████████████████████████|1/1 [00:00<00:00, 13.19file/s]
+Adding data/processed/cleaned.csv to DVC tracking...
+100% Adding...|████████████████████████████████████████████████████████████████|1/1 [00:00<00:00, 8.66file/s]
+Data ingestion complete.
+```
+
+**Expected Output (without DVC):**
+```
+Loading raw data from data/raw/california_housing.csv...
+Raw data shape: (20640, 9)
+Cleaned data shape (after dropna): (20640, 9)
+Cleaned data saved to data/processed/cleaned.csv
+Warning: DVC tracking failed for data/raw/california_housing.csv
+This is normal if the file is already tracked by Git or DVC is not configured.
+Warning: DVC tracking failed for data/processed/cleaned.csv
+This is normal if the file is already tracked by Git or DVC is not configured.
+Data ingestion complete.
 ```
 
 ### 4. Train Models
 
 ```bash
 # Train models with MLflow tracking
-python src/src/train.py
+python src/models/train.py
 ```
 
 **Expected Output:**
 ```
-2025-08-08 22:22:52 [INFO] LinearRegression finished: R² = 0.576
-2025-08-08 22:22:58 [INFO] DecisionTreeRegressor finished: R² = 0.600
-2025-08-08 22:22:58 [INFO] Best run d6236629134941f3b9251478e990ed9c with R² = 0.600
-2025-08-08 22:22:58 [INFO] Registered HousingModel version 7
-2025-08-08 22:22:58 [INFO] Promoted version 7 to Production
-2025-08-08 22:22:58 [INFO] ✅ Training & registration complete.
+2025-08-08 22:46:50 [INFO] LinearRegression finished: R² = 0.576
+2025-08-08 22:46:57 [INFO] DecisionTreeRegressor finished: R² = 0.600
+2025-08-08 22:46:57 [INFO] Best run 6fc26fd8dea94875ac75cc76ba84441a with R² = 0.600
+2025-08-08 22:46:57 [INFO] Registered HousingModel version 9
+2025-08-08 22:46:57 [INFO] Promoted version 9 to Production
+2025-08-08 22:46:57 [INFO] ✅ Training & registration complete.
 ```
 
 ### 5. Start API Service
 
 ```bash
-# Navigate to ML directory (if not already there)
-cd ml
-
 # Start FastAPI service
-uvicorn src.src.app:app --host 127.0.0.1 --port 8000
+uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 **Expected Output:**
 ```
-▶ Loading HousingModel version 7 (Production)
-Downloading artifacts: 100%|████████████████████████████████████████████| 7/7 [00:00<00:00, 1621.48it/s]
-INFO:     Started server process [17936]
+▶ Loading HousingModel version 9 (Production)
+Downloading artifacts: 100%|████████████████████████████████████████████| 7/7 [00:00<00:00, 988.62it/s]
+INFO:     Started server process [20388]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
@@ -221,7 +257,6 @@ print(f"Predicted house value: ${prediction['prediction'] * 100000:.0f}")
 View experiment tracking and model registry:
 
 ```bash
-cd ml
 mlflow ui
 ```
 
@@ -235,7 +270,7 @@ This will start the MLflow UI at `http://localhost:5000`
 
 ### Adding New Models
 
-1. **Edit `ml/src/src/train.py`**
+1. **Edit `src/models/train.py`**
 2. **Add your model to the `candidates` dictionary:**
 
 ```python
@@ -248,8 +283,7 @@ candidates = {
 
 3. **Run training to compare performance:**
 ```bash
-cd ml
-python src/src/train.py
+python src/models/train.py
 ```
 
 ### Code Quality
@@ -277,66 +311,73 @@ python -m pytest tests/
 | File | Purpose |
 |------|---------|
 | `download_data.py` | Downloads California Housing dataset |
-| `ml/src/src/data_ingestion.py` | Cleans and processes raw data |
-| `ml/src/src/train.py` | Trains models and registers with MLflow |
-| `ml/src/src/app.py` | FastAPI service for predictions |
-| `ml/src/src/config.py` | Configuration settings |
+| `src/data/data_ingestion.py` | Cleans and processes raw data |
+| `src/models/train.py` | Trains models and registers with MLflow |
+| `src/api/app.py` | FastAPI service for predictions |
+| `src/utils/config.py` | Configuration settings |
 | `requirements.txt` | Python dependencies |
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Data File Not Found**
+1. **DVC Not Configured**
    ```bash
-   # Copy data to expected location
-   cd ml
-   Copy-Item -Path "../data/raw/california_housing.csv" -Destination "data/raw/" -Force
+   # Initialize DVC for data version control
+   dvc init
+   dvc add data/raw/california_housing.csv
+   dvc add data/processed/cleaned.csv
+   git add .dvc .dvcignore
+   git commit -m "Add data files to DVC tracking"
    ```
 
-2. **API Service Module Import Error**
-   ```bash
-   # ❌ This will fail from root directory:
-   uvicorn src.src.app:app --host 127.0.0.1 --port 8000
-   
-   # ✅ This works from ml directory:
-   cd ml
-   uvicorn src.src.app:app --host 127.0.0.1 --port 8000
-   ```
-
-3. **Port Already in Use**
+2. **Port Already in Use**
    ```bash
    # Try different port
-   uvicorn src.src.app:app --host 127.0.0.1 --port 8001
+   uvicorn src.api.app:app --host 127.0.0.1 --port 8001
    ```
 
-4. **MLflow Model Not Found**
+3. **MLflow Model Not Found**
    ```bash
-   # Ensure you're in the ml directory
-   cd ml
-   # Copy mlruns to service directory
-   cp -r mlruns ../service/
+   # Ensure mlruns directory exists
+   ls mlruns/
    ```
 
-5. **DVC Errors**
+4. **DVC Errors**
    - DVC errors are expected if not configured
    - Data processing will still work without DVC
 
-6. **Module Import Errors**
+5. **Module Import Errors**
    ```bash
-   # Ensure you're in the correct directory
-   cd ml
-   python src/src/train.py
+   # Ensure you're in the project root
+   python src/models/train.py
    ```
 
 ### ✅ **Working Commands Summary**
 
-| Step | Command | Directory | Status |
-|------|---------|-----------|--------|
-| Data Download | `python download_data.py` | root | ✅ Working |
-| Data Processing | `cd ml && python src/src/data_ingestion.py` | ml | ✅ Working |
-| Model Training | `cd ml && python src/src/train.py` | ml | ✅ Working |
-| API Service | `cd ml && uvicorn src.src.app:app --host 127.0.0.1 --port 8000` | ml | ✅ Working |
+| Step | Command | Status |
+|------|---------|--------|
+| DVC Setup | `dvc init && dvc add data/*` | ✅ Optional |
+| Data Download | `python download_data.py` | ✅ Working |
+| Data Processing | `python src/data/data_ingestion.py` | ✅ Working |
+| Model Training | `python src/models/train.py` | ✅ Working |
+| API Service | `uvicorn src.api.app:app --host 127.0.0.1 --port 8000` | ✅ Working |
+
+## 🐳 Docker Deployment
+
+### Build the Docker Image
+
+```bash
+docker build -t mlops-service .
+```
+
+### Run the Container
+
+```bash
+docker run -p 8000:8000 mlops-service
+```
+
+The service will be available at `http://localhost:8000`
 
 ## 📈 Project Features
 
@@ -346,6 +387,8 @@ python -m pytest tests/
 - ✅ **API Service**: FastAPI prediction endpoint
 - ✅ **Experiment Tracking**: MLflow integration
 - ✅ **Production Deployment**: Model promotion workflow
+- ✅ **Clean Architecture**: Well-organized source code structure
+- ✅ **Data Version Control**: DVC integration (optional)
 
 ## 🤝 Contributing
 
