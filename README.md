@@ -341,8 +341,8 @@ chmod +x deploy.sh
 ./deploy.sh local
 
 # Or manually
-docker pull vignesh-bits-wilp/housing-api:latest
-docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
+docker pull vigneshbitswilp/housing-api:latest
+docker run -p 8000:8000 vigneshbitswilp/housing-api:latest
 ```
 
 #### **EC2 Deployment:**
@@ -499,10 +499,10 @@ The GitHub Actions pipeline automatically builds and pushes Docker images to Doc
 
 ```bash
 # Pull the latest image
-docker pull vignesh-bits-wilp/housing-api:latest
+docker pull vigneshbitswilp/housing-api:latest
 
 # Run the containerized service
-docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
+docker run -p 8000:8000 vigneshbitswilp/housing-api:latest
 ```
 
 ## 🤝 Contributing

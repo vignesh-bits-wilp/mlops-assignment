@@ -8,7 +8,7 @@ set -e
 echo "🚀 Starting MLOps Housing API Deployment..."
 
 # Configuration
-IMAGE_NAME="vignesh-bits-wilp/housing-api:latest"
+IMAGE_NAME="vigneshbitswilp/housing-api:latest"
 CONTAINER_NAME="housing-api"
 PORT=8000
 

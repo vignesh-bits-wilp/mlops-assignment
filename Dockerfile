@@ -14,6 +14,9 @@ COPY src/ ./src/
 # Copy data files (if they exist)
 COPY data/ ./data/
 
+# Copy MLflow runs (trained models)
+COPY mlruns/ ./mlruns/
+
 # Expose port 8000
 EXPOSE 8000
 
