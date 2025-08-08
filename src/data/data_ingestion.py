@@ -1,6 +1,6 @@
-import os
 import pandas as pd
 import subprocess
+
 
 def ingest_and_clean_data(
     raw_path="data/raw/california_housing.csv",
@@ -11,6 +11,7 @@ def ingest_and_clean_data(
     and uses DVC to track both the raw and cleaned CSVs.
     """
     # Ensure processed directory exists
+    import os
     os.makedirs(os.path.dirname(cleaned_path), exist_ok=True)
 
     # Load raw data
@@ -35,6 +36,7 @@ def ingest_and_clean_data(
             print(f"Warning: DVC tracking failed for {file}")
             print("This is normal if the file is already tracked by Git or DVC is not configured.")
     print("Data ingestion complete.")
+
 
 if __name__ == "__main__":
     ingest_and_clean_data()

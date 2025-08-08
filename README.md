@@ -27,11 +27,18 @@ mlops-assignment/
 │       └── cleaned.csv
 ├── models/                # Trained models (future use)
 ├── mlruns/                # MLflow tracking
-├── tests/                 # Tests (future use)
+├── tests/                 # Tests
+│   ├── __init__.py
+│   ├── test_api.py
+│   └── test_data_ingestion.py
 ├── infra/                 # Infrastructure
+├── .github/workflows/     # CI/CD pipelines
+│   └── ci.yml
 ├── requirements.txt       # Python dependencies
 ├── download_data.py       # Data download script
 ├── Dockerfile            # Docker configuration
+├── pytest.ini           # Pytest configuration
+├── .flake8              # Flake8 configuration
 └── README.md             # This file
 ```
 
@@ -130,12 +137,13 @@ python src/models/train.py
 
 **Expected Output:**
 ```
-2025-08-08 22:46:50 [INFO] LinearRegression finished: R² = 0.576
-2025-08-08 22:46:57 [INFO] DecisionTreeRegressor finished: R² = 0.600
-2025-08-08 22:46:57 [INFO] Best run 6fc26fd8dea94875ac75cc76ba84441a with R² = 0.600
-2025-08-08 22:46:57 [INFO] Registered HousingModel version 9
-2025-08-08 22:46:57 [INFO] Promoted version 9 to Production
-2025-08-08 22:46:57 [INFO] ✅ Training & registration complete.
+🚀 Starting model training...
+LinearRegression finished: R² = 0.576
+DecisionTreeRegressor finished: R² = 0.600
+Best run 6fc26fd8dea94875ac75cc76ba84441a with R² = 0.600
+Registered HousingModel version 9
+Promoted version 9 to Production
+✅ Training & registration complete.
 ```
 
 ### 5. Start API Service
@@ -266,6 +274,57 @@ This will start the MLflow UI at `http://localhost:5000`
 - **housing_regression**: Main experiment tracking model training
 - **Model Registry**: HousingModel with versioned deployments
 
+## ⚙️ CI/CD Pipeline
+
+This project includes a comprehensive CI/CD pipeline using GitHub Actions:
+
+### Workflow Overview
+
+The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
+
+1. **Lint & Test Job**:
+   - Runs on every push to `main` and pull requests
+   - Sets up Python 3.9
+   - Installs dependencies with caching
+   - Runs `flake8` for code linting
+   - Runs `pytest` with coverage reporting
+   - Uploads coverage to Codecov
+
+2. **Build & Push Job**:
+   - Runs only on successful pushes to `main`
+   - Builds Docker image with proper tagging
+   - Pushes to Docker Hub (requires secrets)
+
+### Required Secrets
+
+To enable Docker image pushing, add these secrets to your GitHub repository:
+
+- `DOCKERHUB_USERNAME`: Your Docker Hub username
+- `DOCKERHUB_TOKEN`: Your Docker Hub access token
+
+### Local Testing
+
+Test the CI pipeline locally:
+
+```bash
+# Run linting
+flake8 src tests
+
+# Run tests with coverage
+pytest tests/ -v --cov=src --cov-report=xml
+
+# Run all tests
+python -m pytest tests/ -v
+```
+
+### Docker Image Tags
+
+The pipeline automatically tags Docker images with:
+- `latest` for main branch
+- `v1.0.0` for semantic version tags
+- `main-abc123` for commit SHA tags
+- `pr-123` for pull request tags
+
 ## 🛠️ Development
 
 ### Adding New Models
@@ -302,8 +361,11 @@ isort .
 ### Testing
 
 ```bash
-# Run tests (when implemented)
-python -m pytest tests/
+# Run tests
+python -m pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=src --cov-report=html
 ```
 
 ## 📁 File Descriptions
@@ -315,6 +377,9 @@ python -m pytest tests/
 | `src/models/train.py` | Trains models and registers with MLflow |
 | `src/api/app.py` | FastAPI service for predictions |
 | `src/utils/config.py` | Configuration settings |
+| `tests/test_api.py` | API endpoint tests |
+| `tests/test_data_ingestion.py` | Data processing tests |
+| `.github/workflows/ci.yml` | CI/CD pipeline configuration |
 | `requirements.txt` | Python dependencies |
 
 ## 🚨 Troubleshooting
@@ -353,6 +418,13 @@ python -m pytest tests/
    python src/models/train.py
    ```
 
+6. **CI/CD Pipeline Failures**
+   ```bash
+   # Test locally before pushing
+   flake8 src tests
+   pytest tests/ -v
+   ```
+
 ### ✅ **Working Commands Summary**
 
 | Step | Command | Status |
@@ -362,6 +434,9 @@ python -m pytest tests/
 | Data Processing | `python src/data/data_ingestion.py` | ✅ Working |
 | Model Training | `python src/models/train.py` | ✅ Working |
 | API Service | `uvicorn src.api.app:app --host 127.0.0.1 --port 8000` | ✅ Working |
+| Testing | `pytest tests/ -v` | ✅ Working |
+| Linting | `flake8 src tests` | ✅ Working |
+| CI/CD Pipeline | GitHub Actions | ✅ Configured |
 
 ## 🐳 Docker Deployment
 
@@ -379,6 +454,18 @@ docker run -p 8000:8000 mlops-service
 
 The service will be available at `http://localhost:8000`
 
+### CI/CD Docker Images
+
+The GitHub Actions pipeline automatically builds and pushes Docker images to Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull vignesh-bits-wilp/housing-api:latest
+
+# Run the containerized service
+docker run -p 8000:8000 vignesh-bits-wilp/housing-api:latest
+```
+
 ## 📈 Project Features
 
 - ✅ **Data Pipeline**: Automated download and cleaning
@@ -389,6 +476,10 @@ The service will be available at `http://localhost:8000`
 - ✅ **Production Deployment**: Model promotion workflow
 - ✅ **Clean Architecture**: Well-organized source code structure
 - ✅ **Data Version Control**: DVC integration (optional)
+- ✅ **CI/CD Pipeline**: Automated testing and deployment
+- ✅ **Code Quality**: Linting and testing automation
+- ✅ **Docker Support**: Containerized deployment
+- ✅ **Comprehensive Testing**: Unit tests with coverage
 
 ## 🤝 Contributing
 
@@ -396,6 +487,7 @@ The service will be available at `http://localhost:8000`
 2. Write tests for new functionality
 3. Update documentation as needed
 4. Ensure all components work together
+5. Run the CI pipeline locally before pushing
 
 ## 📄 License
 

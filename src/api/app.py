@@ -7,8 +7,6 @@ FastAPI service that serves the most-recent **Production** version of
 • POST /predict  → {"prediction": <float>}
 """
 
-import os
-import numpy as np
 import mlflow
 import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
@@ -31,29 +29,34 @@ print(f"▶ Loading {MODEL_NAME} version {version.version} ({version.current_sta
 model = mlflow.pyfunc.load_model(version.source)  # `source` is a file:// URI to artifacts/model
 
 # ─────────────────────── Pydantic schema ─────────────────────────
+
+
 class HousingFeatures(BaseModel):
-    MedInc:     float
-    HouseAge:   float
-    AveRooms:   float
-    AveBedrms:  float
+    MedInc: float
+    HouseAge: float
+    AveRooms: float
+    AveBedrms: float
     Population: float
-    AveOccup:   float
-    Latitude:   float
-    Longitude:  float
+    AveOccup: float
+    Latitude: float
+    Longitude: float
+
 
 # ───────────────────────── FastAPI app ────────────────────────────
 app = FastAPI(title="California Housing Prediction API")
+
 
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
 
+
 @app.post("/predict")
 def predict(features: HousingFeatures):
     # Build a 1-row DataFrame with the correct column names
-    df = pd.DataFrame([features.dict()])   # → columns match exactly
+    df = pd.DataFrame([features.model_dump()])  # → columns match exactly
     try:
-        pred = model.predict(df)           # MLflow schema satisfied
+        pred = model.predict(df)  # MLflow schema satisfied
         return {"prediction": float(pred[0])}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
