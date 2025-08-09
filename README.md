@@ -1,518 +1,262 @@
-# MLOps Project - California Housing Prediction
+# MLOps Assignment - California Housing Price Prediction
 
-A complete Machine Learning Operations (MLOps) project that demonstrates end-to-end ML pipeline development, including data ingestion, model training with MLflow tracking, model registry, and FastAPI deployment.
+**Group 89** | MLOps Course Assignment | August 2025
 
-## 🏗️ Project Structure
+A complete MLOps pipeline for predicting California housing prices using scikit-learn models, MLflow tracking, FastAPI deployment, and automated monitoring.
+
+## Quick Start
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd mlops-assignment
+pip install -r requirements.txt
+
+# Download and process data
+python src/data/data_ingestion.py
+
+# Train models
+python src/models/train.py
+
+# Start the API
+python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
+
+# Check it out at http://127.0.0.1:8000/docs
+```
+
+## What We Built
+
+This project implements a complete MLOps pipeline for housing price prediction. We started simple and kept adding features as we learned more about MLOps practices.
+
+### Core Features
+- **Data Pipeline**: Automated data ingestion, cleaning, and versioning with DVC
+- **Model Training**: Multiple model comparison with MLflow experiment tracking
+- **API Service**: FastAPI-based prediction service with monitoring
+- **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
+- **Monitoring**: Request logging, performance metrics, and system health checks
+- **Auto-Retraining**: Intelligent model retraining based on data changes and performance
+
+## Project Structure
 
 ```
 mlops-assignment/
-├── src/                    # Source code
-│   ├── data/              # Data processing
-│   │   ├── __init__.py
+├── src/                    # Main source code
+│   ├── data/              # Data processing pipeline
 │   │   └── data_ingestion.py
-│   ├── models/            # Model training
-│   │   ├── __init__.py
-│   │   └── train.py
+│   ├── models/            # Model training and retraining
+│   │   ├── train.py
+│   │   └── retrain_trigger.py
 │   ├── api/               # FastAPI service
-│   │   ├── __init__.py
 │   │   └── app.py
-│   ├── utils/             # Utilities
-│   │   ├── __init__.py
-│   │   └── config.py
-│   └── __init__.py
-├── data/                  # Data files
-│   ├── raw/              # Raw data files
-│   │   └── california_housing.csv
-│   └── processed/        # Processed data files
-│       └── cleaned.csv
-├── models/                # Trained models (future use)
-├── mlruns/                # MLflow tracking
-├── tests/                 # Tests
-│   ├── __init__.py
-│   ├── test_api.py
-│   └── test_data_ingestion.py
-├── infra/                 # Infrastructure
-├── .github/workflows/     # CI/CD pipelines
-│   └── ci.yml
-├── requirements.txt       # Python dependencies
-├── download_data.py       # Data download script
-├── Dockerfile            # Docker configuration
-├── deploy.sh             # Deployment script
-├── pytest.ini           # Pytest configuration
-├── .flake8              # Flake8 configuration
-└── README.md             # This file
+│   └── utils/             # Configuration and utilities
+│       └── config.py
+├── data/                  # Data files (managed by DVC)
+│   ├── raw/              # Original dataset
+│   └── processed/        # Cleaned data
+├── tests/                 # Test suite
+├── docs/                  # Documentation
+├── .github/workflows/     # CI/CD pipeline
+└── mlruns/               # MLflow experiment tracking
 ```
 
-## 🚀 Quick Start
+## API Usage
 
-### Prerequisites
-
-- **Python 3.9+**
-- **pip** package manager
-- **Git** for version control
-- **Docker** for containerization
-- **DVC** for data version control (optional but recommended)
-
-### 0. First-Time Setup (DVC Configuration)
-
-If you're setting up the project for the first time, you'll need to initialize DVC for data version control:
-
-```bash
-# Install DVC (if not already installed)
-pip install dvc
-
-# Initialize DVC in the project
-dvc init
-
-# Add data files to DVC tracking
-dvc add data/raw/california_housing.csv
-dvc add data/processed/cleaned.csv
-
-# Commit DVC files to Git
-git add .dvc .dvcignore
-git commit -m "Add data files to DVC tracking"
-```
-
-**Note:** If you don't want to use DVC, the data processing will still work, but you'll see warning messages about DVC not being configured.
-
-### 1. Install Dependencies
-
-```bash
-# Install all required packages
-pip install -r requirements.txt
-```
-
-### 2. Download Dataset
-
-```bash
-# Download California Housing dataset
-python download_data.py
-```
-
-**Expected Output:**
-```
-Downloading California Housing dataset...
-Dataset saved to: data/raw/california_housing.csv
-Dataset shape: (20640, 9)
-Features: ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup', 'Latitude', 'Longitude', 'target']
-```
-
-### 3. Process Data
-
-```bash
-# Run data ingestion and cleaning
-python src/data/data_ingestion.py
-```
-
-**Expected Output (with DVC configured):**
-```
-Loading raw data from data/raw/california_housing.csv...
-Raw data shape: (20640, 9)
-Cleaned data shape (after dropna): (20640, 9)
-Cleaned data saved to data/processed/cleaned.csv
-Adding data/raw/california_housing.csv to DVC tracking...
-100% Adding...|████████████████████████████████████████████████████████████████|1/1 [00:00<00:00, 13.19file/s]
-Adding data/processed/cleaned.csv to DVC tracking...
-100% Adding...|████████████████████████████████████████████████████████████████|1/1 [00:00<00:00, 8.66file/s]
-Data ingestion complete.
-```
-
-**Expected Output (without DVC):**
-```
-Loading raw data from data/raw/california_housing.csv...
-Raw data shape: (20640, 9)
-Cleaned data shape (after dropna): (20640, 9)
-Cleaned data saved to data/processed/cleaned.csv
-Warning: DVC tracking failed for data/raw/california_housing.csv
-This is normal if the file is already tracked by Git or DVC is not configured.
-Warning: DVC tracking failed for data/processed/cleaned.csv
-This is normal if the file is already tracked by Git or DVC is not configured.
-Data ingestion complete.
-```
-
-### 4. Train Models
-
-```bash
-# Train models with MLflow tracking
-python src/models/train.py
-```
-
-**Expected Output:**
-```
-🚀 Starting model training...
-LinearRegression finished: R² = 0.576
-DecisionTreeRegressor finished: R² = 0.600
-Best run 6fc26fd8dea94875ac75cc76ba84441a with R² = 0.600
-Registered HousingModel version 9
-Promoted version 9 to Production
-✅ Training & registration complete.
-```
-
-### 5. Start API Service
-
-```bash
-# Start FastAPI service
-uvicorn src.api.app:app --host 127.0.0.1 --port 8000
-```
-
-**Expected Output:**
-```
-▶ Loading HousingModel version 9 (Production)
-Downloading artifacts: 100%|████████████████████████████████████████████| 7/7 [00:00<00:00, 988.62it/s]
-INFO:     Started server process [20388]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-```
-
-## 📊 Dataset Information
-
-The California Housing dataset contains the following features:
-
-| Feature | Description | Type |
-|---------|-------------|------|
-| MedInc | Median income in block group | float |
-| HouseAge | Median house age in block group | float |
-| AveRooms | Average number of rooms per household | float |
-| AveBedrms | Average number of bedrooms per household | float |
-| Population | Block group population | float |
-| AveOccup | Average number of household members | float |
-| Latitude | Block group latitude | float |
-| Longitude | Block group longitude | float |
-| target | Median house value (target variable) | float |
-
-## 🔧 API Usage
-
-### Health Check
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-**Response:**
-```json
-{"status": "ok"}
-```
-
-### Make Predictions
-
-```bash
-curl -X POST "http://127.0.0.1:8000/predict" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "MedInc": 8.3252,
-       "HouseAge": 41.0,
-       "AveRooms": 6.984127,
-       "AveBedrms": 1.023810,
-       "Population": 322.0,
-       "AveOccup": 2.555556,
-       "Latitude": 37.88,
-       "Longitude": -122.23
-     }'
-```
-
-**Response:**
-```json
-{"prediction": 4.526}
-```
-
-### Python Client Example
+Once the server is running, you can make predictions:
 
 ```python
 import requests
-import json
 
-# Health check
-response = requests.get("http://127.0.0.1:8000/health")
-print(response.json())  # {"status": "ok"}
-
-# Make prediction
-features = {
+# Make a prediction
+response = requests.post("http://127.0.0.1:8000/predict", json={
     "MedInc": 8.3252,
     "HouseAge": 41.0,
-    "AveRooms": 6.984127,
-    "AveBedrms": 1.023810,
+    "AveRooms": 6.984,
+    "AveBedrms": 1.024,
     "Population": 322.0,
-    "AveOccup": 2.555556,
+    "AveOccup": 2.556,
     "Latitude": 37.88,
     "Longitude": -122.23
-}
+})
 
-response = requests.post(
-    "http://127.0.0.1:8000/predict",
-    json=features
-)
-prediction = response.json()
-print(f"Predicted house value: ${prediction['prediction'] * 100000:.0f}")
+print(response.json())
+# {"prediction": 4.526, "model_version": "4", "request_id": "...", "response_time_ms": 12.3}
 ```
 
-## 🧪 Model Performance
+### Available Endpoints
 
-### Current Best Model: **DecisionTreeRegressor**
-- **R² Score**: 0.600
-- **Features**: 8 numerical features
-- **Target**: Median house value (California housing prices)
-- **Training Time**: ~30 seconds
-- **Model Size**: ~7MB
+- `GET /health` - System health check
+- `POST /predict` - Housing price prediction
+- `GET /metrics` - System metrics and performance stats
+- `GET /logs/{limit}` - Recent prediction logs
+- `GET /retrain/status` - Model retraining system status
+- `POST /retrain/trigger` - Manually trigger model retraining
+- `POST /retrain/config` - Update retraining configuration
 
-### Model Comparison
+## Model Performance
 
-| Model | R² Score | RMSE | Status |
-|-------|----------|------|--------|
-| LinearRegression | 0.576 | 0.847 | Baseline |
-| DecisionTreeRegressor | 0.600 | 0.816 | **Production** |
+Our current best model (DecisionTreeRegressor) achieves:
+- **R² Score**: ~0.60 on test data
+- **Average Response Time**: ~100ms
+- **Prediction Accuracy**: Reasonable for housing price estimation
 
-## 🔍 MLflow Tracking
+We tried LinearRegression first but the DecisionTree performed better on this dataset.
 
-View experiment tracking and model registry:
+## MLflow Tracking
+
+View experiment results at `file:./mlruns` or start the MLflow UI:
 
 ```bash
-mlflow ui
+mlflow ui --backend-store-uri file:./mlruns
 ```
 
-This will start the MLflow UI at `http://localhost:5000`
+All model training runs are tracked with:
+- Model parameters and hyperparameters
+- Performance metrics (R² score)
+- Model artifacts and versions
+- Automatic model registry
 
-### Available Experiments
-- **housing_regression**: Main experiment tracking model training
-- **Model Registry**: HousingModel with versioned deployments
+## Data Versioning with DVC
 
-## ⚙️ CI/CD Pipeline
-
-This project includes a comprehensive CI/CD pipeline using GitHub Actions:
-
-### Workflow Overview
-
-The CI/CD pipeline (`.github/workflows/ci.yml`) includes:
-
-1. **Lint & Test Job**:
-   - Runs on every push to `master` and pull requests
-   - Sets up Python 3.9
-   - Installs dependencies with caching
-   - Runs `flake8` for code linting
-   - Runs `pytest` with coverage reporting
-   - Uploads coverage to Codecov
-
-2. **Build & Push Job**:
-   - Runs only on successful pushes to `master`
-   - Builds Docker image with proper tagging
-   - Pushes to Docker Hub (requires secrets)
-
-3. **Deploy Job**:
-   - Simulates local deployment
-   - Provides EC2 deployment instructions
-   - Tests deployment functionality
-
-### Required Secrets
-
-To enable Docker image pushing, add these secrets to your GitHub repository:
-
-- `DOCKERHUB_USERNAME`: Your Docker Hub username
-- `DOCKERHUB_TOKEN`: Your Docker Hub access token
-
-### Local Testing
-
-Test the CI pipeline locally:
+We use DVC to version our datasets:
 
 ```bash
+# Pull latest data
+dvc pull
+
+# Check data status
+dvc status
+
+# Add new data files
+dvc add data/new_dataset.csv
+git add data/new_dataset.csv.dvc
+git commit -m "Add new dataset"
+dvc push
+```
+
+The data is stored in a separate GitHub repository for better organization.
+
+## Automated Retraining
+
+The system can automatically retrain models when:
+- Data changes are detected (MD5 hash comparison)
+- Model performance degrades below threshold
+- Manual trigger via API or CLI
+
+```bash
+# Check retraining status
+python -m src.models.retrain_trigger status
+
+# Manually trigger retraining
+python -m src.models.retrain_trigger trigger "Performance degraded"
+```
+
+## CI/CD Pipeline
+
+Our GitHub Actions pipeline:
+1. **Lint & Test**: Code quality checks and test suite
+2. **Data Sync**: Pull latest data from DVC remote
+3. **Model Training**: Automated retraining with MLflow
+4. **Build & Deploy**: Docker build and deployment
+
+The pipeline runs on every push to main and creates deployment artifacts.
+
+## Docker Deployment
+
+```bash
+# Build image
+docker build -t housing-api .
+
+# Run container
+docker run -p 8000:8000 housing-api
+
+# Or use the deployment script
+./deploy.sh
+```
+
+## Development Setup
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest tests/ -v
+
 # Run linting
 flake8 src tests
 
-# Run tests with coverage
-pytest tests/ -v --cov=src --cov-report=xml
+# Start development server
+python -m uvicorn src.api.app:app --reload
+```
 
+## Configuration
+
+Main configuration is in `src/utils/config.py`:
+- Data paths and MLflow settings
+- Model names and experiment configuration
+- API and monitoring settings
+
+## Monitoring and Logging
+
+The system logs all predictions to:
+- SQLite database (`logs/predictions.db`)
+- Log files (`logs/api.log`)
+- Real-time metrics collection
+
+Monitor system health via `/metrics` endpoint.
+
+## Testing
+
+Comprehensive test suite covering:
+- Data ingestion and preprocessing
+- Model training and evaluation  
+- API endpoints and responses
+- Monitoring and logging functionality
+- Retraining system components
+
+```bash
 # Run all tests
-python -m pytest tests/ -v
+pytest tests/ -v --cov=src
+
+# Run specific test file
+pytest tests/test_api.py -v
 ```
 
-### Docker Image Tags
+## Troubleshooting
 
-The pipeline automatically tags Docker images with:
-- `latest` for master branch
-- `v1.0.0` for semantic version tags
-- `master-abc123` for commit SHA tags
-- `pr-123` for pull request tags
+**Common Issues:**
 
-### Deployment Options
+1. **MLflow model not found**: Run `python src/models/train.py` first
+2. **DVC data missing**: Run `dvc pull` to get latest data
+3. **Port 8000 in use**: Kill existing processes with `killall uvicorn`
+4. **Import errors**: Make sure you're in the project root directory
 
-#### **Local Deployment:**
-```bash
-# Use the deployment script
-chmod +x deploy.sh
-./deploy.sh local
+**Logs and Debugging:**
+- API logs: `logs/api.log`
+- Prediction database: `logs/predictions.db`
+- MLflow UI: `mlflow ui`
 
-# Or manually
-docker pull vigneshbitswilp/housing-api:latest
-docker run -p 8000:8000 vigneshbitswilp/housing-api:latest
-```
+## What We Learned
 
-#### **EC2 Deployment:**
-```bash
-# Get deployment instructions
-./deploy.sh ec2
+This project taught us a lot about MLOps practices:
+- The importance of experiment tracking and reproducibility
+- How monitoring and logging help in production systems
+- CI/CD pipelines make deployment much more reliable
+- Data versioning is crucial for ML projects
+- Automated retraining can help maintain model performance
 
-# Or follow the manual steps:
-# 1. SSH into EC2 instance
-# 2. Install Docker
-# 3. Pull and run the image
-```
+The retraining system was probably more complex than needed for the assignment, but it was fun to implement and shows how production ML systems work.
 
-## 🛠️ Development
+## Assignment Requirements Covered
 
-### Adding New Models
+✅ **Part 1**: Repository and Data Versioning (DVC + GitHub)  
+✅ **Part 2**: Model Development & Experiment Tracking (MLflow)  
+✅ **Part 3**: API & Docker Packaging (FastAPI + Docker)  
+✅ **Part 4**: CI/CD with GitHub Actions  
+✅ **Part 5**: Logging and Monitoring (SQLite + metrics)  
+✅ **Part 6**: Documentation and Architecture  
+✅ **Bonus**: Input validation, retraining triggers, enhanced monitoring  
 
-1. **Edit `src/models/train.py`**
-2. **Add your model to the `candidates` dictionary:**
+---
 
-```python
-candidates = {
-    "LinearRegression": LinearRegression(),
-    "DecisionTreeRegressor": DecisionTreeRegressor(max_depth=5, random_state=42),
-    "YourNewModel": YourNewModel(),  # Add here
-}
-```
-
-3. **Run training to compare performance:**
-```bash
-python src/models/train.py
-```
-
-### Code Quality
-
-```bash
-# Format code
-black .
-
-# Lint code
-flake8 .
-
-# Sort imports
-isort .
-```
-
-### Testing
-
-```bash
-# Run tests
-python -m pytest tests/ -v
-
-# Run with coverage
-pytest tests/ -v --cov=src --cov-report=html
-```
-
-## 📁 File Descriptions
-
-| File | Purpose |
-|------|---------|
-| `download_data.py` | Downloads California Housing dataset |
-| `src/data/data_ingestion.py` | Cleans and processes raw data |
-| `src/models/train.py` | Trains models and registers with MLflow |
-| `src/api/app.py` | FastAPI service for predictions |
-| `src/utils/config.py` | Configuration settings |
-| `tests/test_api.py` | API endpoint tests |
-| `tests/test_data_ingestion.py` | Data processing tests |
-| `.github/workflows/ci.yml` | CI/CD pipeline configuration |
-| `deploy.sh` | Deployment automation script |
-| `requirements.txt` | Python dependencies |
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **DVC Not Configured**
-   ```bash
-   # Initialize DVC for data version control
-   dvc init
-   dvc add data/raw/california_housing.csv
-   dvc add data/processed/cleaned.csv
-   git add .dvc .dvcignore
-   git commit -m "Add data files to DVC tracking"
-   ```
-
-2. **Port Already in Use**
-   ```bash
-   # Try different port
-   uvicorn src.api.app:app --host 127.0.0.1 --port 8001
-   ```
-
-3. **MLflow Model Not Found**
-   ```bash
-   # Ensure mlruns directory exists
-   ls mlruns/
-   ```
-
-4. **DVC Errors**
-   - DVC errors are expected if not configured
-   - Data processing will still work without DVC
-
-5. **Module Import Errors**
-   ```bash
-   # Ensure you're in the project root
-   python src/models/train.py
-   ```
-
-6. **CI/CD Pipeline Failures**
-   ```bash
-   # Test locally before pushing
-   flake8 src tests
-   pytest tests/ -v
-   ```
-
-7. **Docker Build Failures**
-   ```bash
-   # Check Dockerfile syntax
-   docker build -t test-image .
-   ```
-
-### Working Commands Summary
-
-| Step | Command |
-|------|---------|
-| DVC Setup | `dvc init && dvc add data/*` |
-| Data Download | `python download_data.py` |
-| Data Processing | `python src/data/data_ingestion.py` |
-| Model Training | `python src/models/train.py` |
-| API Service | `uvicorn src.api.app:app --host 127.0.0.1 --port 8000` |
-| Testing | `pytest tests/ -v` |
-| Linting | `flake8 src tests` |
-| Local Deployment | `./deploy.sh local` |
-| EC2 Deployment | `./deploy.sh ec2` |
-
-## 🐳 Docker Deployment
-
-### Build the Docker Image
-
-```bash
-docker build -t mlops-service .
-```
-
-### Run the Container
-
-```bash
-docker run -p 8000:8000 mlops-service
-```
-
-The service will be available at `http://localhost:8000`
-
-### CI/CD Docker Images
-
-The GitHub Actions pipeline automatically builds and pushes Docker images to Docker Hub:
-
-```bash
-# Pull the latest image
-docker pull vigneshbitswilp/housing-api:latest
-
-# Run the containerized service
-docker run -p 8000:8000 vigneshbitswilp/housing-api:latest
-```
-
-## 🤝 Contributing
-
-1. Follow the existing code structure
-2. Write tests for new functionality
-3. Update documentation as needed
-4. Ensure all components work together
-5. Run the CI pipeline locally before pushing
-
-## 📄 License
-
-[Add your license here]
+*Group 89 - MLOps Assignment 2025*

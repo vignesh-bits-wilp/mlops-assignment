@@ -1,11 +1,12 @@
 """
-Model Retraining Trigger System (Bonus Feature)
+Model Retraining Trigger System
 
-This module provides automated and manual model retraining capabilities:
-1. Data change detection and automatic retraining
-2. Manual retraining via API endpoint
-3. Performance-based retraining triggers
-4. Integration with MLflow for experiment tracking
+Handles automated and manual model retraining based on:
+- Data changes (hash comparison)
+- Performance degradation  
+- Manual triggers via API or CLI
+
+This was probably overkill for the assignment but seemed like a cool feature to add.
 """
 
 import os
@@ -35,7 +36,12 @@ except ImportError:
 
 
 class RetrainTrigger:
-    """Handles model retraining triggers and automation."""
+    """
+    Handles model retraining triggers and automation.
+    
+    This class manages when models should be retrained based on various conditions
+    like data changes, performance degradation, etc.
+    """
     
     def __init__(self):
         self.mlflow_uri = MLFLOW_TRACKING_URI
@@ -43,13 +49,13 @@ class RetrainTrigger:
         self.model_name = MODEL_NAME
         self.client = MlflowClient(tracking_uri=self.mlflow_uri)
         
-        # Retraining configuration
+        # Default configuration - these seem reasonable but can be adjusted
         self.config = {
-            "min_performance_threshold": 0.5,  # Minimum R² score
-            "performance_degradation_threshold": 0.1,  # Trigger if performance drops by this much
-            "data_change_check_interval": 3600,  # Check for data changes every hour (in seconds)
+            "min_performance_threshold": 0.5,  # Minimum acceptable R² score
+            "performance_degradation_threshold": 0.1,  # Retrain if performance drops by this much
+            "data_change_check_interval": 3600,  # Check for data changes every hour
             "auto_retrain_enabled": True,
-            "max_retrain_frequency": timedelta(hours=6),  # Don't retrain more than once every 6 hours
+            "max_retrain_frequency": timedelta(hours=6),  # Don't retrain too often
         }
         
         # State tracking
@@ -57,7 +63,7 @@ class RetrainTrigger:
         self.ensure_state_file()
     
     def ensure_state_file(self):
-        """Ensure the retraining state file exists."""
+        """Make sure the state file exists with initial values."""
         os.makedirs("logs", exist_ok=True)
         if not os.path.exists(self.state_file):
             initial_state = {
@@ -71,49 +77,58 @@ class RetrainTrigger:
                 json.dump(initial_state, f, indent=2)
     
     def get_state(self) -> Dict[str, Any]:
-        """Get current retraining state."""
+        """Get current retraining state from file."""
         with open(self.state_file, 'r') as f:
             return json.load(f)
     
     def update_state(self, updates: Dict[str, Any]):
-        """Update retraining state."""
+        """Update retraining state file."""
         state = self.get_state()
         state.update(updates)
         with open(self.state_file, 'w') as f:
             json.dump(state, f, indent=2, default=str)
     
     def calculate_data_hash(self, file_path: str) -> str:
-        """Calculate hash of data file to detect changes."""
+        """
+        Calculate MD5 hash of data file to detect changes.
+        Simple but effective way to detect if data has changed.
+        """
         if not os.path.exists(file_path):
             return ""
         
         hash_md5 = hashlib.md5()
         with open(file_path, "rb") as f:
+            # Read in chunks to handle large files
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
     
     def has_data_changed(self) -> Tuple[bool, str]:
-        """Check if data has changed since last training."""
+        """Check if processed data has changed since last training."""
         current_hash = self.calculate_data_hash(PROCESSED_DATA_PATH)
         state = self.get_state()
         last_hash = state.get("last_data_hash")
         
+        # If we don't have a previous hash, consider it changed
         if last_hash is None or current_hash != last_hash:
             return True, current_hash
         return False, current_hash
     
     def get_current_model_performance(self) -> Optional[float]:
-        """Get performance of current production model."""
+        """
+        Get performance of current production model.
+        This re-evaluates the model on current test data.
+        """
         try:
             # Get latest model version
             versions = self.client.search_model_versions(f"name='{self.model_name}'")
             if not versions:
                 return None
             
+            # Get the most recent version
             latest_version = sorted(versions, key=lambda x: int(x.version))[-1]
             
-            # Get the run that created this model version
+            # Load model and evaluate
             model_uri = f"models:/{self.model_name}/{latest_version.version}"
             model = mlflow.pyfunc.load_model(model_uri)
             
@@ -122,6 +137,7 @@ class RetrainTrigger:
                 df = pd.read_csv(PROCESSED_DATA_PATH)
                 X = df.drop("target", axis=1)
                 y = df["target"]
+                # Use same random state as training for consistency
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
                 
                 y_pred = model.predict(X_test)
@@ -134,7 +150,10 @@ class RetrainTrigger:
             return None
     
     def should_retrain(self) -> Tuple[bool, str]:
-        """Determine if model should be retrained."""
+        """
+        Determine if model should be retrained based on various conditions.
+        Returns (should_retrain, reason)
+        """
         state = self.get_state()
         reasons = []
         
@@ -142,11 +161,12 @@ class RetrainTrigger:
         if not self.config["auto_retrain_enabled"]:
             return False, "Auto-retrain disabled"
         
-        # Check minimum time between retrains
+        # Don't retrain too frequently
         last_retrain = state.get("last_retrain_time")
         if last_retrain:
             last_retrain_dt = datetime.fromisoformat(last_retrain)
-            if datetime.now() - last_retrain_dt < self.config["max_retrain_frequency"]:
+            time_since_last = datetime.now() - last_retrain_dt
+            if time_since_last < self.config["max_retrain_frequency"]:
                 return False, f"Too soon since last retrain ({last_retrain_dt})"
         
         # Check for data changes
@@ -174,17 +194,21 @@ class RetrainTrigger:
         return should_retrain, reason
     
     def trigger_retrain(self, reason: str = "Manual trigger") -> Dict[str, Any]:
-        """Trigger model retraining."""
+        """
+        Actually trigger the retraining process.
+        This runs the training script as a subprocess.
+        """
         print(f"🔄 Starting model retraining: {reason}")
         
         start_time = datetime.now()
         
         try:
-            # Set MLflow tracking
+            # Set up MLflow
             mlflow.set_tracking_uri(self.mlflow_uri)
             mlflow.set_experiment(self.experiment_name)
             
             # Run the training script
+            # Using subprocess to run the training script cleanly
             result = subprocess.run([
                 "python", "src/models/train.py"
             ], capture_output=True, text=True, cwd=".")
@@ -195,7 +219,7 @@ class RetrainTrigger:
             # Get new model performance
             new_performance = self.get_current_model_performance()
             
-            # Update state
+            # Update state with new information
             data_changed, current_hash = self.has_data_changed()
             self.update_state({
                 "last_retrain_time": start_time.isoformat(),
@@ -264,12 +288,15 @@ class RetrainTrigger:
         return {"message": "Configuration updated", "new_config": self.config}
 
 
-# Global instance
+# Global instance for easy access
 retrain_trigger = RetrainTrigger()
 
 
 def main():
-    """CLI interface for retraining."""
+    """
+    CLI interface for retraining operations.
+    Usage: python -m src.models.retrain_trigger [command] [args]
+    """
     import sys
     
     if len(sys.argv) > 1:

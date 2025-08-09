@@ -1,13 +1,13 @@
 # MLOps Assignment - Architecture Summary
 
-**Group**: Group 89  
-**Assignment**: Build, Track, Package, Deploy and Monitor an ML Model using MLOps Best Practices  
-**Dataset**: California Housing (Regression)  
-**Date**: 10 August 2025  
+**Team**: Group 89  
+**Course**: MLOps Assignment - Build, Track, Package, Deploy and Monitor an ML Model  
+**Dataset**: California Housing Dataset (Regression Problem)  
+**Submission**: August 2025  
 
 ## 🏗️ System Architecture Overview
 
-This MLOps pipeline implements a complete end-to-end machine learning system for California housing price prediction, incorporating industry best practices for model development, deployment, and monitoring.
+Our team built a complete MLOps pipeline for predicting California housing prices. We started with basic requirements and gradually added more sophisticated features like automated retraining and comprehensive monitoring.
 
 ### 📊 **Data Pipeline Architecture**
 ```

@@ -1,14 +1,15 @@
 # src/api/app.py
 """
-FastAPI service that serves the latest version of HousingModel
-(logged by train.py and stored in ./mlruns).
+FastAPI service for California Housing price prediction.
+Serves the latest MLflow model with monitoring and retraining capabilities.
 
-• GET  /health   → {"status": "ok"}
-• POST /predict  → {"prediction": <float>}
+Endpoints:
+• GET  /health   → system health check
+• POST /predict  → housing price prediction
 • GET  /metrics  → monitoring metrics
-• GET  /retrain/status → retraining status and configuration
-• POST /retrain/trigger → manual retraining trigger
-• POST /retrain/config → update retraining configuration
+• GET  /retrain/status → retraining system status
+• POST /retrain/trigger → manual retraining
+• POST /retrain/config → update retraining config
 """
 
 import mlflow
@@ -26,7 +27,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import uuid
 
-# Import retraining system
+# Try to import retraining system
 try:
     from ..models.retrain_trigger import retrain_trigger
     RETRAIN_AVAILABLE = True
@@ -43,11 +44,9 @@ except ImportError:
         print("⚠️  Retraining system not available")
 
 
-# ────────────────────────── Logging Setup ──────────────────────────
-# Create logs directory first
+# Setup logging first
 os.makedirs('logs', exist_ok=True)
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -58,15 +57,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create logs directory (redundant but safe)
+# Make sure logs directory exists (being extra careful)
 os.makedirs('logs', exist_ok=True)
 
-# ────────────────────────── Database Setup ──────────────────────────
 def init_db():
-    """Initialize SQLite database for storing predictions."""
+    """Initialize SQLite database for storing predictions and events."""
     conn = sqlite3.connect('logs/predictions.db')
     cursor = conn.cursor()
     
+    # Predictions table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS predictions (
             id TEXT PRIMARY KEY,
@@ -79,6 +78,7 @@ def init_db():
         )
     ''')
     
+    # Metrics table - not really used yet but keeping for future
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS metrics (
             timestamp TEXT PRIMARY KEY,
@@ -90,7 +90,7 @@ def init_db():
         )
     ''')
     
-    # Add retraining logs table
+    # Retraining logs table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS retrain_logs (
             id TEXT PRIMARY KEY,
@@ -111,8 +111,8 @@ def init_db():
 # Initialize database on startup
 init_db()
 
-# ────────────────────────── Metrics Storage ──────────────────────────
 class MetricsCollector:
+    """Simple metrics collector - could probably use a proper metrics library later"""
     def __init__(self):
         self.total_requests = 0
         self.successful_predictions = 0
@@ -144,24 +144,22 @@ class MetricsCollector:
 
 metrics_collector = MetricsCollector()
 
-# ────────────────────────── MLflow setup ──────────────────────────
-# Point MLflow at the same local `mlruns` directory used in training.
+# MLflow setup
 mlflow.set_tracking_uri("file:./mlruns")
-
 MODEL_NAME = "HousingModel"
 client = MlflowClient()
 model_version = "unknown"
 
-# Try to load the latest registered model version
+# Try to load the latest model
 try:
-    # Get all versions and load the latest one
+    # This MLflow API is deprecated but still works for now
     all_versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
     if not all_versions:
-        # Try to get any version if no specific stage versions exist
+        # Fallback to search all versions
         all_versions = client.search_model_versions(f"name='{MODEL_NAME}'")
     
     if all_versions:
-        # Sort by version number and get the latest
+        # Get the latest version
         latest_version = sorted(all_versions, key=lambda x: int(x.version))[-1]
         model_version = latest_version.version
         logger.info(f"Loading {MODEL_NAME} version {model_version}")
@@ -177,9 +175,7 @@ except Exception as e:
     model = None
 
 
-# ─────────────────────── Pydantic schemas ─────────────────────────
-
-
+# Pydantic models for request/response
 class HousingFeatures(BaseModel):
     MedInc: float
     HouseAge: float
@@ -205,7 +201,7 @@ class RetrainRequest(BaseModel):
     force: Optional[bool] = False
 
 
-# ───────────────────────── FastAPI app ────────────────────────────
+# FastAPI app
 app = FastAPI(
     title="California Housing Prediction API",
     description="MLOps Assignment - Housing Price Prediction with Monitoring & Retraining",
@@ -238,7 +234,7 @@ def log_prediction(request_id: str, request_data: dict, prediction: float,
         conn.commit()
         conn.close()
         
-        # Log to file
+        # Also log to file
         logger.info(f"Prediction logged - ID: {request_id}, Status: {status}, "
                    f"Response time: {response_time_ms:.2f}ms")
         
@@ -300,7 +296,7 @@ def predict(features: HousingFeatures, request: Request):
     logger.info(f"Prediction request received - ID: {request_id}")
     
     try:
-        # Build a 1-row DataFrame with the correct column names
+        # Convert to DataFrame
         df = pd.DataFrame([request_data])
         
         if model_available and model is not None:
@@ -308,7 +304,7 @@ def predict(features: HousingFeatures, request: Request):
             prediction = float(pred[0])
             logger.info(f"MLflow model prediction: {prediction}")
         else:
-            # Fallback prediction based on median income
+            # Simple fallback - just use median income as rough estimate
             prediction = float(features.MedInc * 0.5)
             logger.info(f"Fallback prediction: {prediction}")
         
@@ -424,8 +420,7 @@ def get_recent_logs(limit: int = 10):
         return {"error": str(e)}
 
 
-# ────────────────────────── Retraining Endpoints ──────────────────────────
-
+# Retraining endpoints
 @app.get("/retrain/status")
 def get_retrain_status():
     """Get current retraining status and configuration."""
