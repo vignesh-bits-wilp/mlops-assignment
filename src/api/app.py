@@ -6,12 +6,15 @@ FastAPI service that serves the latest version of HousingModel
 • GET  /health   → {"status": "ok"}
 • POST /predict  → {"prediction": <float>}
 • GET  /metrics  → monitoring metrics
+• GET  /retrain/status → retraining status and configuration
+• POST /retrain/trigger → manual retraining trigger
+• POST /retrain/config → update retraining configuration
 """
 
 import mlflow
 import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel
 import pandas as pd
 import os
@@ -20,8 +23,24 @@ import sqlite3
 import json
 import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid
+
+# Import retraining system
+try:
+    from ..models.retrain_trigger import retrain_trigger
+    RETRAIN_AVAILABLE = True
+except ImportError:
+    try:
+        # Fallback for direct execution
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from models.retrain_trigger import retrain_trigger
+        RETRAIN_AVAILABLE = True
+    except ImportError:
+        RETRAIN_AVAILABLE = False
+        print("⚠️  Retraining system not available")
 
 
 # ────────────────────────── Logging Setup ──────────────────────────
@@ -68,6 +87,20 @@ def init_db():
             failed_predictions INTEGER,
             avg_response_time_ms REAL,
             model_version TEXT
+        )
+    ''')
+    
+    # Add retraining logs table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS retrain_logs (
+            id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            success INTEGER NOT NULL,
+            duration_seconds REAL,
+            old_performance REAL,
+            new_performance REAL,
+            error_message TEXT
         )
     ''')
     
@@ -144,7 +177,7 @@ except Exception as e:
     model = None
 
 
-# ─────────────────────── Pydantic schema ─────────────────────────
+# ─────────────────────── Pydantic schemas ─────────────────────────
 
 
 class HousingFeatures(BaseModel):
@@ -158,10 +191,24 @@ class HousingFeatures(BaseModel):
     Longitude: float
 
 
+class RetrainConfig(BaseModel):
+    """Configuration for retraining system."""
+    min_performance_threshold: Optional[float] = None
+    performance_degradation_threshold: Optional[float] = None
+    auto_retrain_enabled: Optional[bool] = None
+    max_retrain_frequency_hours: Optional[float] = None
+
+
+class RetrainRequest(BaseModel):
+    """Request to trigger retraining."""
+    reason: Optional[str] = "Manual API trigger"
+    force: Optional[bool] = False
+
+
 # ───────────────────────── FastAPI app ────────────────────────────
 app = FastAPI(
     title="California Housing Prediction API",
-    description="MLOps Assignment - Housing Price Prediction with Monitoring",
+    description="MLOps Assignment - Housing Price Prediction with Monitoring & Retraining",
     version="1.0.0"
 )
 
@@ -199,6 +246,38 @@ def log_prediction(request_id: str, request_data: dict, prediction: float,
         logger.error(f"Failed to log prediction: {e}")
 
 
+def log_retrain_event(retrain_id: str, reason: str, success: bool, 
+                     duration_seconds: float = None, old_performance: float = None,
+                     new_performance: float = None, error_message: str = None):
+    """Log retraining event to database."""
+    try:
+        conn = sqlite3.connect('logs/predictions.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO retrain_logs
+            (id, timestamp, reason, success, duration_seconds, old_performance, new_performance, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            retrain_id,
+            datetime.now().isoformat(),
+            reason,
+            1 if success else 0,
+            duration_seconds,
+            old_performance,
+            new_performance,
+            error_message
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Retrain event logged - ID: {retrain_id}, Success: {success}")
+        
+    except Exception as e:
+        logger.error(f"Failed to log retrain event: {e}")
+
+
 @app.get("/health")
 def health() -> dict:
     """Health check endpoint."""
@@ -206,6 +285,7 @@ def health() -> dict:
         "status": "ok",
         "model_available": model_available,
         "model_version": model_version,
+        "retraining_available": RETRAIN_AVAILABLE,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -278,6 +358,19 @@ def get_metrics():
         cursor.execute('SELECT AVG(response_time_ms) FROM predictions')
         avg_db_response_time = cursor.fetchone()[0] or 0
         
+        # Get retraining stats if available
+        retrain_stats = {}
+        if RETRAIN_AVAILABLE:
+            cursor.execute('SELECT COUNT(*) FROM retrain_logs')
+            retrain_stats['total_retrains'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM retrain_logs WHERE success = 1')
+            retrain_stats['successful_retrains'] = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT MAX(timestamp) FROM retrain_logs WHERE success = 1')
+            last_retrain = cursor.fetchone()[0]
+            retrain_stats['last_successful_retrain'] = last_retrain
+        
         conn.close()
         
         return {
@@ -287,6 +380,7 @@ def get_metrics():
                 "successful_predictions_logged": successful_logged,
                 "avg_response_time_from_db": round(avg_db_response_time, 2)
             },
+            "retraining_stats": retrain_stats,
             "timestamp": datetime.now().isoformat()
         }
         
@@ -327,4 +421,140 @@ def get_recent_logs(limit: int = 10):
         
     except Exception as e:
         logger.error(f"Failed to get logs: {e}")
+        return {"error": str(e)}
+
+
+# ────────────────────────── Retraining Endpoints ──────────────────────────
+
+@app.get("/retrain/status")
+def get_retrain_status():
+    """Get current retraining status and configuration."""
+    if not RETRAIN_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Retraining system not available")
+    
+    try:
+        status = retrain_trigger.get_retrain_status()
+        return {
+            **status,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Failed to get retrain status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/retrain/trigger")
+async def trigger_retrain(request: RetrainRequest, background_tasks: BackgroundTasks):
+    """Trigger model retraining."""
+    if not RETRAIN_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Retraining system not available")
+    
+    try:
+        retrain_id = str(uuid.uuid4())
+        reason = request.reason or "Manual API trigger"
+        
+        logger.info(f"Retrain triggered via API - ID: {retrain_id}, Reason: {reason}")
+        
+        # Check if retraining should be allowed
+        if not request.force:
+            should_retrain, check_reason = retrain_trigger.should_retrain()
+            if not should_retrain and "Too soon since last retrain" in check_reason:
+                raise HTTPException(
+                    status_code=429, 
+                    detail=f"Retraining not allowed: {check_reason}. Use force=true to override."
+                )
+        
+        # Get current performance for logging
+        old_performance = retrain_trigger.get_current_model_performance()
+        
+        # Trigger retraining
+        result = retrain_trigger.trigger_retrain(reason)
+        
+        # Log the event
+        log_retrain_event(
+            retrain_id=retrain_id,
+            reason=reason,
+            success=result["success"],
+            duration_seconds=result.get("duration_seconds"),
+            old_performance=old_performance,
+            new_performance=result.get("new_performance"),
+            error_message=result.get("error")
+        )
+        
+        return {
+            "retrain_id": retrain_id,
+            **result,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to trigger retrain: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/retrain/config")
+def update_retrain_config(config: RetrainConfig):
+    """Update retraining configuration."""
+    if not RETRAIN_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Retraining system not available")
+    
+    try:
+        # Convert config to dict and filter None values
+        config_dict = {k: v for k, v in config.model_dump().items() if v is not None}
+        
+        # Convert hours to timedelta for max_retrain_frequency
+        if "max_retrain_frequency_hours" in config_dict:
+            from datetime import timedelta
+            hours = config_dict.pop("max_retrain_frequency_hours")
+            config_dict["max_retrain_frequency"] = timedelta(hours=hours)
+        
+        result = retrain_trigger.update_config(config_dict)
+        
+        logger.info(f"Retrain config updated: {config_dict}")
+        
+        return {
+            **result,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to update retrain config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/retrain/logs/{limit}")
+def get_retrain_logs(limit: int = 10):
+    """Get recent retraining logs."""
+    try:
+        conn = sqlite3.connect('logs/predictions.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, timestamp, reason, success, duration_seconds, 
+                   old_performance, new_performance, error_message
+            FROM retrain_logs 
+            ORDER BY timestamp DESC 
+            LIMIT ?
+        ''', (limit,))
+        
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                "id": row[0],
+                "timestamp": row[1],
+                "reason": row[2],
+                "success": bool(row[3]),
+                "duration_seconds": row[4],
+                "old_performance": row[5],
+                "new_performance": row[6],
+                "error_message": row[7]
+            })
+        
+        conn.close()
+        return {"logs": logs, "count": len(logs)}
+        
+    except Exception as e:
+        logger.error(f"Failed to get retrain logs: {e}")
         return {"error": str(e)}

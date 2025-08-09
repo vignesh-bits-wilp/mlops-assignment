@@ -46,6 +46,10 @@ FastAPI Service → Docker Container → GitHub Actions → Docker Hub → Deplo
 - `POST /predict` - Housing price predictions with logging
 - `GET /metrics` - Real-time monitoring metrics
 - `GET /logs/{limit}` - Recent prediction history
+- `GET /retrain/status` - Retraining system status and configuration
+- `POST /retrain/trigger` - Manual model retraining trigger
+- `POST /retrain/config` - Update retraining configuration
+- `GET /retrain/logs/{limit}` - Recent retraining history
 
 ### 📈 **Monitoring & Observability**
 ```
@@ -127,11 +131,34 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 3. **Cloud Deployment**: EC2/GCP with automated deployment scripts
 4. **CI/CD Integration**: Automated deployment on successful builds
 
+## 🔄 **Automated Retraining System (Bonus)**
+
+### **Intelligent Retraining Triggers**
+```
+Data Change Detection → Performance Monitoring → Trigger Evaluation → Auto/Manual Retrain
+        ↓                      ↓                    ↓                    ↓
+    Hash Comparison      R² Score Tracking    Decision Logic      MLflow Integration
+```
+
+**Retraining Features:**
+- **Data Drift Detection**: MD5 hash-based change detection for automatic retraining
+- **Performance Monitoring**: Continuous R² score tracking with degradation alerts
+- **Configurable Thresholds**: Customizable performance and frequency limits
+- **Manual Triggers**: API endpoints for on-demand retraining with safety checks
+- **State Management**: Persistent tracking of retraining history and performance
+- **CLI Interface**: Command-line tools for operational management
+
+**Retraining Configuration:**
+- **Min Performance Threshold**: 0.5 R² score (configurable)
+- **Degradation Threshold**: 0.1 R² drop triggers retraining
+- **Frequency Limits**: Maximum once every 6 hours (configurable)
+- **Auto-Enable**: Toggleable automated retraining system
+
 ## 🔮 **Future Enhancements**
 
-- **Advanced Monitoring**: Prometheus + Grafana dashboard
+- **Advanced Monitoring**: Prometheus + Grafana dashboard integration
 - **A/B Testing**: Multi-model serving with traffic splitting
-- **Auto-Retraining**: Trigger retraining on data drift detection
+- **Data Drift Analysis**: Statistical drift detection beyond hash comparison
 - **Kubernetes**: Container orchestration for production scale
 
 ---

@@ -45,7 +45,7 @@ jobs:
     - name: Run tests
       run: |
         pip install pytest pytest-cov
-        pytest tests/test_data_ingestion.py tests/test_api.py tests/test_api_standalone.py tests/test_monitoring.py -v --cov=src --cov-report=xml
+        pytest tests/test_data_ingestion.py tests/test_api.py tests/test_api_standalone.py tests/test_monitoring.py tests/test_retraining.py -v --cov=src --cov-report=xml
         
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
