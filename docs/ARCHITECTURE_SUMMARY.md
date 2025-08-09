@@ -1,9 +1,9 @@
 # MLOps Assignment - Architecture Summary
 
-**Student**: [Your Name]  
+**Group**: Group 89  
 **Assignment**: Build, Track, Package, Deploy and Monitor an ML Model using MLOps Best Practices  
 **Dataset**: California Housing (Regression)  
-**Date**: January 2025  
+**Date**: 10 August 2025  
 
 ## 🏗️ System Architecture Overview
 

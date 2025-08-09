@@ -25,6 +25,9 @@ import uuid
 
 
 # ────────────────────────── Logging Setup ──────────────────────────
+# Create logs directory first
+os.makedirs('logs', exist_ok=True)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -36,7 +39,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create logs directory
+# Create logs directory (redundant but safe)
 os.makedirs('logs', exist_ok=True)
 
 # ────────────────────────── Database Setup ──────────────────────────
