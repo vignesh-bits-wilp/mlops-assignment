@@ -53,6 +53,9 @@ def clean_and_preprocess_data(
     if missing_values.sum() > 0:
         print("⚠️  Found missing values:")
         print(missing_values[missing_values > 0])
+        print("Dropping rows with missing values...")
+        df = df.dropna()
+        print(f"Data shape after dropping missing values: {df.shape}")
     else:
         print("✅ No missing values found")
     
