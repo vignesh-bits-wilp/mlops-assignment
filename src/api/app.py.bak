@@ -212,7 +212,7 @@ def predict(features: HousingFeatures, request: Request):
     """Make housing price prediction with logging."""
     start_time = time.time()
     request_id = str(uuid.uuid4())
-    request_data = features.model_dump()
+    request_data = features.dict()
     
     logger.info(f"Prediction request received - ID: {request_id}")
     

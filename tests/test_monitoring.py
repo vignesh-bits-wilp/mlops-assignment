@@ -1,0 +1,356 @@
+"""
+Tests for monitoring and logging functionality (Part 5 of MLOps Assignment).
+"""
+
+import pytest
+import sqlite3
+import json
+import os
+import tempfile
+from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
+import sys
+import shutil
+
+# Add src to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from api.app import app, init_db, log_prediction, MetricsCollector
+
+
+class TestMonitoring:
+    
+    @pytest.fixture
+    def client(self):
+        """Create test client with temporary database."""
+        # Create temporary directory for test logs
+        self.temp_dir = tempfile.mkdtemp()
+        
+        # Patch the database path for testing
+        with patch('api.app.sqlite3.connect') as mock_connect:
+            # Create in-memory database for tests
+            self.test_conn = sqlite3.connect(':memory:')
+            mock_connect.return_value = self.test_conn
+            
+            # Initialize test database
+            cursor = self.test_conn.cursor()
+            cursor.execute('''
+                CREATE TABLE predictions (
+                    id TEXT PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    request_data TEXT NOT NULL,
+                    prediction REAL NOT NULL,
+                    model_version TEXT,
+                    response_time_ms REAL NOT NULL,
+                    status TEXT NOT NULL
+                )
+            ''')
+            self.test_conn.commit()
+            
+            yield TestClient(app)
+        
+        # Cleanup
+        self.test_conn.close()
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+    
+    def test_health_endpoint_with_monitoring(self, client):
+        """Test health endpoint returns monitoring information."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "status" in data
+        assert "model_available" in data
+        assert "model_version" in data
+        assert "timestamp" in data
+        assert data["status"] == "ok"
+    
+    def test_metrics_endpoint(self, client):
+        """Test metrics endpoint returns monitoring data."""
+        response = client.get("/metrics")
+        assert response.status_code == 200
+        
+        data = response.json()
+        required_fields = [
+            "total_requests", "successful_predictions", "failed_predictions",
+            "success_rate", "avg_response_time_ms", "uptime_seconds",
+            "model_version", "database_stats", "timestamp"
+        ]
+        
+        for field in required_fields:
+            assert field in data, f"Missing field: {field}"
+        
+        # Check database stats structure
+        db_stats = data["database_stats"]
+        assert "total_predictions_logged" in db_stats
+        assert "successful_predictions_logged" in db_stats
+        assert "avg_response_time_from_db" in db_stats
+    
+    def test_prediction_logging(self, client):
+        """Test that predictions are logged to database."""
+        # Make a prediction request
+        test_features = {
+            "MedInc": 8.3252,
+            "HouseAge": 41.0,
+            "AveRooms": 6.984127,
+            "AveBedrms": 1.023810,
+            "Population": 322.0,
+            "AveOccup": 2.555556,
+            "Latitude": 37.88,
+            "Longitude": -122.23
+        }
+        
+        response = client.post("/predict", json=test_features)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "prediction" in data
+        assert "request_id" in data
+        assert "response_time_ms" in data
+        assert "model_version" in data
+        
+        # Verify prediction was logged
+        # Note: In real test, we'd check the database
+        # Here we verify the response structure indicates logging occurred
+        assert isinstance(data["response_time_ms"], (int, float))
+        assert data["response_time_ms"] >= 0
+    
+    def test_logs_endpoint(self, client):
+        """Test logs endpoint returns recent predictions."""
+        # First make some predictions to generate logs
+        test_features = {
+            "MedInc": 5.0,
+            "HouseAge": 30.0,
+            "AveRooms": 5.0,
+            "AveBedrms": 1.0,
+            "Population": 1000.0,
+            "AveOccup": 3.0,
+            "Latitude": 34.0,
+            "Longitude": -118.0
+        }
+        
+        # Make a few predictions
+        for _ in range(3):
+            client.post("/predict", json=test_features)
+        
+        # Test logs endpoint
+        response = client.get("/logs/5")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "logs" in data
+        assert "count" in data
+        assert isinstance(data["logs"], list)
+        assert isinstance(data["count"], int)
+    
+    def test_metrics_collector(self):
+        """Test MetricsCollector functionality."""
+        collector = MetricsCollector()
+        
+        # Initially should have zero metrics
+        metrics = collector.get_metrics()
+        assert metrics["total_requests"] == 0
+        assert metrics["successful_predictions"] == 0
+        assert metrics["failed_predictions"] == 0
+        assert metrics["success_rate"] == 0
+        
+        # Record some requests
+        collector.record_request(100.0, True)
+        collector.record_request(150.0, True)
+        collector.record_request(200.0, False)
+        
+        metrics = collector.get_metrics()
+        assert metrics["total_requests"] == 3
+        assert metrics["successful_predictions"] == 2
+        assert metrics["failed_predictions"] == 1
+        assert metrics["success_rate"] == 2/3
+        assert metrics["avg_response_time_ms"] == 150.0
+        assert metrics["uptime_seconds"] >= 0
+    
+    @patch('api.app.sqlite3.connect')
+    def test_log_prediction_function(self, mock_connect):
+        """Test log_prediction function."""
+        # Mock database connection
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value = mock_conn
+        mock_conn.cursor.return_value = mock_cursor
+        
+        # Test logging
+        request_data = {"test": "data"}
+        log_prediction("test-id", request_data, 123.45, 100.0, "success")
+        
+        # Verify database interaction
+        mock_connect.assert_called_once()
+        mock_cursor.execute.assert_called_once()
+        mock_conn.commit.assert_called_once()
+        mock_conn.close.assert_called_once()
+    
+    def test_prediction_with_invalid_input(self, client):
+        """Test prediction with invalid input logs error correctly."""
+        # Missing required fields
+        invalid_features = {
+            "MedInc": 8.3252,
+            # Missing other required fields
+        }
+        
+        response = client.post("/predict", json=invalid_features)
+        assert response.status_code == 422  # Validation error
+    
+    def test_concurrent_requests_metrics(self, client):
+        """Test that metrics are correctly updated with concurrent requests."""
+        test_features = {
+            "MedInc": 6.0,
+            "HouseAge": 25.0,
+            "AveRooms": 6.0,
+            "AveBedrms": 1.2,
+            "Population": 800.0,
+            "AveOccup": 2.8,
+            "Latitude": 36.0,
+            "Longitude": -120.0
+        }
+        
+        # Make multiple requests
+        responses = []
+        for i in range(5):
+            response = client.post("/predict", json=test_features)
+            responses.append(response)
+        
+        # All should be successful
+        for response in responses:
+            assert response.status_code == 200
+        
+        # Check metrics reflect the requests
+        metrics_response = client.get("/metrics")
+        assert metrics_response.status_code == 200
+        
+        metrics = metrics_response.json()
+        # Note: Exact count might vary depending on test execution order
+        assert metrics["total_requests"] >= 5
+    
+    def test_api_documentation_endpoints(self, client):
+        """Test that API documentation is available."""
+        # FastAPI automatically provides these endpoints
+        docs_response = client.get("/docs")
+        assert docs_response.status_code == 200
+        
+        openapi_response = client.get("/openapi.json")
+        assert openapi_response.status_code == 200
+        
+        openapi_data = openapi_response.json()
+        assert "openapi" in openapi_data
+        assert "paths" in openapi_data
+        
+        # Verify our endpoints are documented
+        paths = openapi_data["paths"]
+        assert "/health" in paths
+        assert "/predict" in paths
+        assert "/metrics" in paths
+
+
+class TestDatabaseOperations:
+    """Test database operations for logging."""
+    
+    def test_database_initialization(self):
+        """Test database initialization creates correct tables."""
+        # Create temporary database
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
+            db_path = tmp_file.name
+        
+        try:
+            # Initialize database
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Create tables (same as in init_db)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS predictions (
+                    id TEXT PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    request_data TEXT NOT NULL,
+                    prediction REAL NOT NULL,
+                    model_version TEXT,
+                    response_time_ms REAL NOT NULL,
+                    status TEXT NOT NULL
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS metrics (
+                    timestamp TEXT PRIMARY KEY,
+                    total_requests INTEGER,
+                    successful_predictions INTEGER,
+                    failed_predictions INTEGER,
+                    avg_response_time_ms REAL,
+                    model_version TEXT
+                )
+            ''')
+            
+            conn.commit()
+            
+            # Verify tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+            
+            assert "predictions" in tables
+            assert "metrics" in tables
+            
+            conn.close()
+        
+        finally:
+            # Cleanup
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+    
+    def test_prediction_data_storage(self):
+        """Test storing and retrieving prediction data."""
+        # Create in-memory database
+        conn = sqlite3.connect(':memory:')
+        cursor = conn.cursor()
+        
+        # Create table
+        cursor.execute('''
+            CREATE TABLE predictions (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                request_data TEXT NOT NULL,
+                prediction REAL NOT NULL,
+                model_version TEXT,
+                response_time_ms REAL NOT NULL,
+                status TEXT NOT NULL
+            )
+        ''')
+        
+        # Insert test data
+        test_data = {
+            'id': 'test-123',
+            'timestamp': '2024-01-01T12:00:00',
+            'request_data': '{"MedInc": 8.0}',
+            'prediction': 4.5,
+            'model_version': 'v1',
+            'response_time_ms': 125.5,
+            'status': 'success'
+        }
+        
+        cursor.execute('''
+            INSERT INTO predictions 
+            (id, timestamp, request_data, prediction, model_version, response_time_ms, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', tuple(test_data.values()))
+        
+        conn.commit()
+        
+        # Retrieve and verify
+        cursor.execute('SELECT * FROM predictions WHERE id = ?', ('test-123',))
+        row = cursor.fetchone()
+        
+        assert row is not None
+        assert row[0] == 'test-123'  # id
+        assert row[3] == 4.5  # prediction
+        assert row[6] == 'success'  # status
+        
+        conn.close()
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"]) 

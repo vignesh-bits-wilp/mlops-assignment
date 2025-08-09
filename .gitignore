@@ -182,3 +182,8 @@ Desktop.ini
 # DVC tracked files
 /data/raw/california_housing.csv
 /data/processed/cleaned.csv
+
+# Logs and monitoring data
+logs/
+*.log
+*.db
