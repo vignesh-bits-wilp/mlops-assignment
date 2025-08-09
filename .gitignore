@@ -127,7 +127,8 @@ dmypy.json
 *.code-workspace
 
 # DVC
-.dvc/
+.dvc/cache/
+.dvc/tmp/
 dvc.lock
 
 # Data files (common ML project exclusions)
@@ -177,3 +178,7 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.temp
+
+# DVC tracked files
+/data/raw/california_housing.csv
+/data/processed/cleaned.csv
