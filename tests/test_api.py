@@ -25,7 +25,15 @@ class TestAPI:
         """Test that the health endpoint returns the expected response."""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+        
+        data = response.json()
+        assert "status" in data
+        assert "model_available" in data
+        assert "model_version" in data
+        assert "timestamp" in data
+        assert data["status"] == "ok"
+        assert isinstance(data["model_available"], bool)
+        assert isinstance(data["timestamp"], str)
 
     @patch('src.api.app.model')
     @patch('src.api.app.model_available', True)
@@ -50,7 +58,12 @@ class TestAPI:
 
         result = response.json()
         assert "prediction" in result
+        assert "model_version" in result
+        assert "request_id" in result
+        assert "response_time_ms" in result
         assert isinstance(result["prediction"], (int, float))
+        assert isinstance(result["response_time_ms"], (int, float))
+        assert result["response_time_ms"] >= 0
 
     @patch('src.api.app.model_available', False)
     def test_predict_endpoint_valid_data_without_model(self, client):
@@ -71,7 +84,12 @@ class TestAPI:
 
         result = response.json()
         assert "prediction" in result
+        assert "model_version" in result
+        assert "request_id" in result
+        assert "response_time_ms" in result
         assert isinstance(result["prediction"], (int, float))
+        assert isinstance(result["response_time_ms"], (int, float))
+        assert result["response_time_ms"] >= 0
         # Check fallback prediction (MedInc * 0.5)
         expected_prediction = test_features["MedInc"] * 0.5
         assert result["prediction"] == expected_prediction
