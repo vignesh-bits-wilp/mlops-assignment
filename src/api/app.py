@@ -273,10 +273,24 @@ try:
                     if run_dirs:
                         # Get the most recent run
                         latest_run = max(run_dirs, key=os.path.getctime)
+                        
+                        # First try the run's artifacts directory
                         model_path = os.path.join(latest_run, "artifacts", "model")
                         
+                        # If not found, try the models subdirectory
+                        if not os.path.exists(model_path):
+                            models_dir = os.path.join(experiment_path, "models")
+                            if os.path.exists(models_dir):
+                                model_dirs = [d for d in os.listdir(models_dir) 
+                                            if os.path.isdir(os.path.join(models_dir, d))]
+                                if model_dirs:
+                                    # Use the first model directory found
+                                    model_id = model_dirs[0]
+                                    model_path = os.path.join(models_dir, model_id, "artifacts")
+                                    logger.info(f"Found model in models directory: {model_path}")
+                        
                         if os.path.exists(model_path):
-                            logger.info(f"Loading model from run: {latest_run}")
+                            logger.info(f"Loading model from: {model_path}")
                             model = mlflow.pyfunc.load_model(model_path)
                             model_available = True
                             model_version = f"run_{os.path.basename(latest_run)}"
@@ -314,10 +328,24 @@ try:
                 if run_dirs:
                     # Get the most recent run
                     latest_run = max(run_dirs, key=os.path.getctime)
+                    
+                    # First try the run's artifacts directory
                     model_path = os.path.join(latest_run, "artifacts", "model")
                     
+                    # If not found, try the models subdirectory
+                    if not os.path.exists(model_path):
+                        models_dir = os.path.join(experiment_path, "models")
+                        if os.path.exists(models_dir):
+                            model_dirs = [d for d in os.listdir(models_dir) 
+                                        if os.path.isdir(os.path.join(models_dir, d))]
+                            if model_dirs:
+                                # Use the first model directory found
+                                model_id = model_dirs[0]
+                                model_path = os.path.join(models_dir, model_id, "artifacts")
+                                logger.info(f"Found model in models directory: {model_path}")
+                    
                     if os.path.exists(model_path):
-                        logger.info(f"Loading model from run: {latest_run}")
+                        logger.info(f"Loading model from: {model_path}")
                         model = mlflow.pyfunc.load_model(model_path)
                         model_available = True
                         model_version = f"run_{os.path.basename(latest_run)}"
