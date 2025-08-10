@@ -24,6 +24,15 @@ COPY data/ ./data/
 # Copy MLflow runs (trained models)
 COPY mlruns/ ./mlruns/
 
+# Verify MLflow models are copied
+RUN ls -la mlruns/ && \
+    if [ -d "mlruns/0" ]; then \
+      echo "MLflow experiment found:" && \
+      ls -la mlruns/0/; \
+    else \
+      echo "Warning: No MLflow experiments found"; \
+    fi
+
 # Create logs directory
 RUN mkdir -p logs
 

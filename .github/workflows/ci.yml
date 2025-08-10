@@ -113,6 +113,14 @@ jobs:
         python src/models/train.py
         echo "✅ Model training complete"
         
+        # Verify models were created
+        echo "📊 Checking MLflow runs..."
+        ls -la mlruns/
+        if [ -d "mlruns/0" ]; then
+          echo "📁 MLflow experiment directory found"
+          ls -la mlruns/0/
+        fi
+        
     - name: Upload MLflow artifacts
       uses: actions/upload-artifact@v4
       with:

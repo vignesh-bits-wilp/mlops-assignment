@@ -232,7 +232,7 @@ model_version = "unknown"
 
 # Try to load the latest model
 try:
-    # This MLflow API is deprecated but still works for now
+    # First try to load from model registry
     all_versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
     if not all_versions:
         # Fallback to search all versions
@@ -246,7 +246,33 @@ try:
         model = mlflow.pyfunc.load_model(f"models:/{MODEL_NAME}/{model_version}")
         model_available = True
     else:
-        raise Exception("No model versions found")
+        # Fallback: try to load directly from mlruns directory
+        logger.info("No registered models found, trying to load from mlruns directory")
+        import os
+        import glob
+        
+        # Find the latest run in mlruns
+        experiment_path = os.path.join("mlruns", "0")  # Default experiment ID
+        if os.path.exists(experiment_path):
+            run_dirs = glob.glob(os.path.join(experiment_path, "*"))
+            run_dirs = [d for d in run_dirs if os.path.isdir(d) and not d.endswith("meta.yaml")]
+            
+            if run_dirs:
+                # Get the most recent run
+                latest_run = max(run_dirs, key=os.path.getctime)
+                model_path = os.path.join(latest_run, "artifacts", "model")
+                
+                if os.path.exists(model_path):
+                    logger.info(f"Loading model from run: {latest_run}")
+                    model = mlflow.pyfunc.load_model(model_path)
+                    model_available = True
+                    model_version = os.path.basename(latest_run)
+                else:
+                    raise Exception(f"Model artifacts not found in {model_path}")
+            else:
+                raise Exception("No runs found in mlruns directory")
+        else:
+            raise Exception("mlruns directory not found")
         
 except Exception as e:
     logger.warning(f"Could not load MLflow model: {e}")
