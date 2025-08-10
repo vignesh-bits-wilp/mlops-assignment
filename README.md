@@ -16,6 +16,13 @@ pip install -r requirements.txt
 python scripts/download_data.py
 python src/data/data_ingestion.py
 
+# Setup DVC remote (Windows)
+.\scripts\setup_dvc_remote.ps1
+
+# Or setup DVC remote (Linux/macOS)
+chmod +x scripts/setup_dvc_remote.sh
+./scripts/setup_dvc_remote.sh
+
 # Train models
 python src/models/train.py
 

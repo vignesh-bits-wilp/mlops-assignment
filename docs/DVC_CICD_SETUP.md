@@ -6,7 +6,7 @@ This guide explains how to set up Data Version Control (DVC) with GitHub Actions
 
 1. **GitHub Repository**: Your main project repository (`mlops-assignment`)
 2. **DVC Data Repository**: A separate repository for data storage (`mlops-assignment-data`)
-3. **SSH Keys**: For secure access to the data repository
+3. **GitHub Token**: For secure access to the data repository (uses built-in GitHub authentication)
 
 ## 📋 Setup Steps
 
@@ -18,59 +18,52 @@ This guide explains how to set up Data Version Control (DVC) with GitHub Actions
    - **Visibility**: Private (recommended for sensitive data)
    - **Don't initialize** with README, .gitignore, or license
 
-### 2. Generate SSH Key for CI/CD
+### 2. Configure Data Repository Permissions
 
-Generate a dedicated SSH key for GitHub Actions:
+For HTTPS access, configure the data repository to allow GitHub Actions:
 
-```bash
-# Generate SSH key (don't use a passphrase for CI/CD)
-ssh-keygen -t ed25519 -C "github-actions-dvc" -f ~/.ssh/dvc_deploy_key -N ""
+1. Go to your **data repository** (`mlops-assignment-data`):
+   - Settings → Actions → General
+   - ✅ **Allow GitHub Actions to create and approve pull requests**
+   - Click "Save"
 
-# This creates:
-# - ~/.ssh/dvc_deploy_key (private key)
-# - ~/.ssh/dvc_deploy_key.pub (public key)
+This enables the built-in `GITHUB_TOKEN` to access the data repository.
+
+### 3. Setup DVC Remote (Optional - for local development)
+
+For local development, you can set up DVC remote using the provided scripts:
+
+**Windows:**
+```powershell
+.\scripts\setup_dvc_remote.ps1
 ```
 
-### 3. Configure SSH Keys
+**Linux/macOS:**
+```bash
+chmod +x scripts/setup_dvc_remote.sh
+./scripts/setup_dvc_remote.sh
+```
 
-#### Add Deploy Key to Data Repository
-
-1. Copy the **public key**:
-   ```bash
-   cat ~/.ssh/dvc_deploy_key.pub
-   ```
-
-2. Go to your **data repository** (`mlops-assignment-data`):
-   - Settings → Deploy keys → Add deploy key
-   - **Title**: `GitHub Actions DVC Access`
-   - **Key**: Paste the public key content
-   - ✅ **Allow write access** (important!)
-   - Click "Add key"
-
-#### Add Private Key to Main Repository Secrets
-
-1. Copy the **private key**:
-   ```bash
-   cat ~/.ssh/dvc_deploy_key
-   ```
-
-2. Go to your **main repository** (`mlops-assignment`):
-   - Settings → Secrets and variables → Actions → New repository secret
-   - **Name**: `DVC_SSH_PRIVATE_KEY`
-   - **Secret**: Paste the entire private key content (including headers)
-   - Click "Add secret"
+This configures DVC to use HTTPS instead of SSH for cross-platform compatibility.
 
 ### 4. Test DVC Setup Locally
 
 Before pushing to CI/CD, test the setup:
 
 ```bash
+# Generate and process data
+python scripts/download_data.py
+python src/data/data_ingestion.py
+
+# Add to DVC tracking
+dvc add data/raw/california_housing.csv data/processed/cleaned.csv
+
 # Push data to DVC remote
-python -m dvc push
+dvc push
 
 # Test by removing and pulling data
 rm data/raw/california_housing.csv data/processed/cleaned.csv
-python -m dvc pull
+dvc pull
 
 # Verify files are restored
 ls -la data/raw/ data/processed/

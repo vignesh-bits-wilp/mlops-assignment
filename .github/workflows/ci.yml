@@ -63,42 +63,35 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+      with:
+        submodules: true
+    
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
         
-    - name: Setup SSH for DVC remote access
-      uses: webfactory/ssh-agent@v0.8.0
-      with:
-        ssh-private-key: ${{ secrets.DVC_SSH_PRIVATE_KEY }}
-        
-    - name: Add GitHub to known hosts
-      run: |
-        mkdir -p ~/.ssh
-        ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-        
-    - name: Cache DVC data
-      uses: actions/cache@v3
-      with:
-        path: .dvc/cache
-        key: ${{ runner.os }}-dvc-${{ hashFiles('data/**/*.dvc') }}
-        restore-keys: |
-          ${{ runner.os }}-dvc-
-          
-    - name: Install dependencies
+    - name: Install DVC
       run: |
         python -m pip install --upgrade pip
+        pip install dvc
+        
+    - name: Install dependencies
+      run: |
         pip install -r requirements.txt
         
     - name: Create required directories
       run: |
         mkdir -p logs mlruns
         
+    - name: Configure DVC for GitHub Actions
+      run: |
+        # Configure DVC to use HTTPS with GitHub token
+        dvc remote modify origin url https://${{ secrets.GITHUB_TOKEN }}@github.com/vignesh-bits-wilp/mlops-assignment-data.git
+        
     - name: Pull data from DVC remote
       run: |
-        python -m dvc pull
+        dvc pull
         
     - name: Verify data files exist
       run: |
@@ -113,7 +106,7 @@ jobs:
         if [ ! -f data/processed/cleaned.csv ] || [ data/raw/california_housing.csv -nt data/processed/cleaned.csv ]; then
           echo "Processing data..."
           python src/data/data_ingestion.py
-          python -m dvc add data/processed/cleaned.csv
+          dvc add data/processed/cleaned.csv
           echo "✅ Data processing complete"
         else
           echo "✅ Processed data is up to date"
@@ -126,7 +119,7 @@ jobs:
     - name: Push updated data to DVC remote (if any changes)
       run: |
         # Push any data changes back to DVC remote
-        python -m dvc push || echo "No changes to push to DVC remote"
+        dvc push || echo "No changes to push to DVC remote"
         
     - name: Upload MLflow artifacts
       uses: actions/upload-artifact@v4

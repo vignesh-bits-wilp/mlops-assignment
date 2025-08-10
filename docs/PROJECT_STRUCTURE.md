@@ -50,6 +50,8 @@ tests/
 scripts/
 ├── download_data.py       # Download California Housing dataset
 ├── generate_test_data.py  # Generate test predictions
+├── setup_dvc_remote.ps1   # Setup DVC remote with HTTPS (Windows)
+├── setup_dvc_remote.sh    # Setup DVC remote with HTTPS (Linux/macOS)
 ├── cleanup_dvc_windows.ps1 # DVC cleanup for Windows
 └── cleanup_dvc_windows.bat # DVC cleanup for Windows
 ```
