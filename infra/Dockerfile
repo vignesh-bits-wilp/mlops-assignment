@@ -30,5 +30,9 @@ RUN mkdir -p logs
 # Expose port 8000
 EXPOSE 8000
 
-# Start the application
-CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set environment variable to ensure uvicorn binds to all interfaces
+ENV HOST=0.0.0.0
+ENV PORT=8000
+
+# Start the application with explicit host binding
+CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
