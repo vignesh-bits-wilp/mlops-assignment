@@ -63,8 +63,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        submodules: true
     
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -82,16 +80,25 @@ jobs:
         
     - name: Create required directories
       run: |
-        mkdir -p logs mlruns
+        mkdir -p logs mlruns data/raw data/processed
         
-    - name: Configure DVC for GitHub Actions
+    - name: Generate fresh data
       run: |
-        # Configure DVC to use HTTPS with GitHub token
-        dvc remote modify origin url https://${{ secrets.GITHUB_TOKEN }}@github.com/vignesh-bits-wilp/mlops-assignment-data.git
+        echo "📊 Generating fresh data..."
+        python scripts/download_data.py
+        echo "✅ Raw data generated"
         
-    - name: Pull data from DVC remote
+    - name: Process data
       run: |
-        dvc pull
+        echo "🔄 Processing data..."
+        python src/data/data_ingestion.py
+        echo "✅ Data processing complete"
+        
+    - name: Add data to DVC tracking (local only)
+      run: |
+        echo "📝 Adding data to DVC tracking..."
+        dvc add data/raw/california_housing.csv data/processed/cleaned.csv
+        echo "✅ Data added to DVC tracking"
         
     - name: Verify data files exist
       run: |
@@ -100,26 +107,11 @@ jobs:
         ls -la data/processed/
         echo "✅ Data files verified"
         
-    - name: Process data (if needed)
-      run: |
-        # Check if processed data is up to date, if not, reprocess
-        if [ ! -f data/processed/cleaned.csv ] || [ data/raw/california_housing.csv -nt data/processed/cleaned.csv ]; then
-          echo "Processing data..."
-          python src/data/data_ingestion.py
-          dvc add data/processed/cleaned.csv
-          echo "✅ Data processing complete"
-        else
-          echo "✅ Processed data is up to date"
-        fi
-        
     - name: Train models and register with MLflow
       run: |
+        echo "🤖 Training models..."
         python src/models/train.py
-        
-    - name: Push updated data to DVC remote (if any changes)
-      run: |
-        # Push any data changes back to DVC remote
-        dvc push || echo "No changes to push to DVC remote"
+        echo "✅ Model training complete"
         
     - name: Upload MLflow artifacts
       uses: actions/upload-artifact@v4
@@ -128,15 +120,14 @@ jobs:
         path: mlruns/
         retention-days: 30
         
-    - name: Upload DVC metadata changes
+    - name: Upload data files for Docker build
       uses: actions/upload-artifact@v4
       with:
-        name: dvc-changes
+        name: data-files
         path: |
-          data/**/*.dvc
-          .dvc/config
+          data/raw/california_housing.csv
+          data/processed/cleaned.csv
         retention-days: 7
-        if-no-files-found: ignore
 
   build-and-push:
     needs: train-and-package
@@ -153,12 +144,18 @@ jobs:
         name: mlruns
         path: mlruns/
         
-    - name: Download DVC metadata (if any changes)
+    - name: Download fresh data files
       uses: actions/download-artifact@v4
       with:
-        name: dvc-changes
-        path: .
-      continue-on-error: true
+        name: data-files
+        path: data/
+        
+    - name: Verify data files for Docker build
+      run: |
+        echo "Verifying data files for Docker build..."
+        ls -la data/raw/
+        ls -la data/processed/
+        echo "✅ Data files ready for Docker build"
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3

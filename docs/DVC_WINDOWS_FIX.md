@@ -1,122 +1,70 @@
-# DVC Windows Compatibility Fix
+# DVC Local-Only Configuration
 
-## Problem
+## Overview
 
-The original DVC setup used SSH URLs with special characters that are not supported by Windows filesystem:
+This project uses DVC for local data versioning without remote storage. Data is generated fresh in each CI/CD pipeline run, ensuring the latest data is always used for model training and Docker image packaging.
 
-```
-git@github.com:vignesh-bits-wilp/mlops-assignment-data.git
-```
+## Configuration
 
-This creates cache directories with `@` and `:` characters, which are invalid in Windows:
-```
-.dvc/git@github.com:vignesh-bits-wilp/mlops-assignment-data.git/files/md5/...
-```
-
-## Solution
-
-Switched from SSH to HTTPS URLs for cross-platform compatibility:
-
-```
-https://github.com/vignesh-bits-wilp/mlops-assignment-data.git
-```
-
-This creates safe cache directories:
-```
-.dvc/github.com/vignesh-bits-wilp/mlops-assignment-data.git/files/md5/...
-```
-
-## Changes Made
-
-### 1. Updated DVC Configuration
+### Local DVC Setup
 
 **File**: `.dvc/config`
 ```ini
 [core]
-    remote = origin
-['remote "origin"']
-    url = https://github.com/vignesh-bits-wilp/mlops-assignment-data.git
+    remote = local
 ```
 
-### 2. Updated CI/CD Pipeline
-
-**File**: `.github/workflows/ci.yml`
-
-**Removed**:
-- SSH key setup
-- SSH known_hosts configuration
-- DVC cache actions
-
-**Added**:
-- DVC installation
-- HTTPS configuration with GitHub token
-- Simplified authentication
-
-**Key Changes**:
-```yaml
-- name: Configure DVC for GitHub Actions
-  run: |
-    dvc remote modify origin url https://${{ secrets.GITHUB_TOKEN }}@github.com/vignesh-bits-wilp/mlops-assignment-data.git
-```
-
-### 3. Created Setup Scripts
-
-**Windows**: `scripts/setup_dvc_remote.ps1`
-**Linux/macOS**: `scripts/setup_dvc_remote.sh`
-
-These scripts help configure DVC remote with HTTPS for local development.
-
-### 4. Updated Documentation
-
-- Updated `docs/DVC_CICD_SETUP.md` to reflect HTTPS approach
-- Updated `README.md` with new setup instructions
-- Created this documentation file
+This configuration keeps all data local without any remote storage dependencies.
 
 ## Benefits
 
-1. **✅ Windows Compatible**: No special characters in folder names
-2. **✅ Cross-Platform**: Works on Windows, macOS, Linux
-3. **✅ Simpler Setup**: No SSH key management needed
-4. **✅ CI/CD Friendly**: Uses GitHub's built-in authentication
-5. **✅ More Reliable**: No filesystem compatibility issues
+1. **✅ Simplified Setup**: No remote storage configuration needed
+2. **✅ Fresh Data**: Each pipeline run generates the latest data
+3. **✅ No Authentication Issues**: No need for service accounts or tokens
+4. **✅ Reliable CI/CD**: Pipeline always uses current data
+5. **✅ Cross-Platform**: Works on Windows, macOS, Linux without issues
 
 ## Setup Instructions
 
 ### For Local Development
 
-**Windows**:
-```powershell
-.\scripts\setup_dvc_remote.ps1
-```
-
-**Linux/macOS**:
+**Generate and process data:**
 ```bash
-chmod +x scripts/setup_dvc_remote.sh
-./scripts/setup_dvc_remote.sh
+# Download raw data
+python scripts/download_data.py
+
+# Process data
+python src/data/data_ingestion.py
+
+# Add to DVC tracking (local only)
+dvc add data/raw/california_housing.csv data/processed/cleaned.csv
 ```
 
 ### For CI/CD
 
-1. **Create Data Repository**: `vignesh-bits-wilp/mlops-assignment-data`
-2. **Enable GitHub Actions**: Settings → Actions → General → Allow GitHub Actions
-3. **Push Data**: The CI/CD pipeline will automatically handle data management
+The pipeline automatically:
+1. Generates fresh data using `scripts/download_data.py`
+2. Processes data using `src/data/data_ingestion.py`
+3. Adds data to DVC tracking
+4. Uses the latest data for model training
+5. Packages the data with the Docker image
 
-### Data Repository Setup
+## Data Flow
 
-1. Create repository: `https://github.com/vignesh-bits-wilp/mlops-assignment-data`
-2. Make it private (recommended)
-3. Enable GitHub Actions access
-4. No additional secrets needed (uses built-in `GITHUB_TOKEN`)
+```mermaid
+graph TD
+    A[Pipeline Starts] --> B[Generate Fresh Data]
+    B --> C[Process Data]
+    C --> D[Add to DVC Tracking]
+    D --> E[Train Models]
+    E --> F[Package with Docker]
+    F --> G[Deploy]
+```
 
 ## Testing
 
 ### Local Testing
 ```bash
-# Setup DVC remote
-.\scripts\setup_dvc_remote.ps1  # Windows
-# or
-./scripts/setup_dvc_remote.sh   # Linux/macOS
-
 # Generate and process data
 python scripts/download_data.py
 python src/data/data_ingestion.py
@@ -124,53 +72,33 @@ python src/data/data_ingestion.py
 # Add to DVC tracking
 dvc add data/raw/california_housing.csv data/processed/cleaned.csv
 
-# Push to remote
-dvc push
+# Train models
+python src/models/train.py
 
-# Test pull
-rm data/raw/california_housing.csv data/processed/cleaned.csv
-dvc pull
+# Test API
+python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 ### CI/CD Testing
-The pipeline will automatically:
-1. Configure DVC with HTTPS
-2. Pull data from remote
-3. Process data if needed
-4. Train models
-5. Push any data changes back to remote
+The pipeline automatically:
+1. Generates fresh data
+2. Processes data
+3. Trains models
+4. Builds Docker image with latest data
+5. Deploys the application
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Repository not found"**: Data repository doesn't exist
-2. **"Permission denied"**: GitHub Actions not enabled on data repository
-3. **"Cache files missing"**: Data hasn't been pushed to remote yet
+1. **"Data files missing"**: Run `python scripts/download_data.py`
+2. **"DVC not tracking files"**: Run `dvc add data/raw/california_housing.csv data/processed/cleaned.csv`
+3. **"Processing errors"**: Check data format in `src/data/data_ingestion.py`
 
 ### Solutions
 
-1. **Create the data repository** if it doesn't exist
-2. **Enable GitHub Actions** on the data repository
-3. **Push data locally first** before running CI/CD
+1. **Regenerate data**: Always run the download script first
+2. **Check DVC status**: Use `dvc status` to see tracked files
+3. **Verify data format**: Ensure data files are in the correct format
 
-## Migration from SSH
-
-If you were using SSH before:
-
-1. **Remove SSH remote**:
-   ```bash
-   dvc remote remove origin
-   ```
-
-2. **Add HTTPS remote**:
-   ```bash
-   dvc remote add origin https://github.com/vignesh-bits-wilp/mlops-assignment-data.git
-   dvc remote default origin
-   ```
-
-3. **Update CI/CD**: Already done in this fix
-
-4. **Test the setup**: Use the provided scripts
-
-This fix ensures that DVC works reliably across all platforms, especially Windows, while maintaining the assignment requirements for using DVC.
+This simplified approach ensures reliable data handling across all platforms and CI/CD environments.

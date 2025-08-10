@@ -16,12 +16,8 @@ pip install -r requirements.txt
 python scripts/download_data.py
 python src/data/data_ingestion.py
 
-# Setup DVC remote (Windows)
-.\scripts\setup_dvc_remote.ps1
-
-# Or setup DVC remote (Linux/macOS)
-chmod +x scripts/setup_dvc_remote.sh
-./scripts/setup_dvc_remote.sh
+# Add data to DVC tracking (local only)
+dvc add data/raw/california_housing.csv data/processed/cleaned.csv
 
 # Train models
 python src/models/train.py
@@ -37,10 +33,10 @@ python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 This project implements a complete MLOps pipeline for housing price prediction. We started simple and kept adding features as we learned more about MLOps practices.
 
 ### Core Features
-- **Data Pipeline**: Automated data ingestion, cleaning, and versioning with DVC
+- **Data Pipeline**: Automated data ingestion, cleaning, and local versioning with DVC
 - **Model Training**: Multiple model comparison with MLflow experiment tracking
 - **API Service**: FastAPI-based prediction service with monitoring
-- **CI/CD Pipeline**: GitHub Actions for automated testing and deployment
+- **CI/CD Pipeline**: GitHub Actions for automated testing and deployment with fresh data generation
 - **Monitoring**: Request logging, performance metrics, and system health checks
 - **Auto-Retraining**: Intelligent model retraining based on data changes and performance
 
@@ -305,3 +301,7 @@ The retraining system was probably more complex than needed for the assignment, 
 ---
 
 *Group 89 - MLOps Assignment 2025*
+
+
+
+

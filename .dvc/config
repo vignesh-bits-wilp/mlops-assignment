@@ -1,4 +1,2 @@
 [core]
-    remote = origin
-['remote "origin"']
-    url = https://github.com/vignesh-bits-wilp/mlops-assignment-data.git
+    remote = local
