@@ -231,6 +231,29 @@ pytest tests/test_api.py -v
 3. **Port 8000 in use**: Kill existing processes with `killall uvicorn`
 4. **Import errors**: Make sure you're in the project root directory
 
+**Windows-Specific Issues:**
+
+5. **DVC cache filename problems**: DVC cache directories can cause Windows filename issues
+   ```cmd
+   # Run the cleanup script (PowerShell)
+   .\scripts\cleanup_dvc_windows.ps1
+   
+   # Or use batch file
+   .\scripts\cleanup_dvc_windows.bat
+   
+   # Then commit the changes
+   git add .
+   git commit -m "Clean up DVC cache for Windows compatibility"
+   ```
+
+6. **Git checkout fails on Windows**: The `.dvcignore` file should prevent problematic files from being tracked
+   ```cmd
+   # If you still have issues, reset and clean
+   git reset --hard
+   git clean -fd
+   dvc pull
+   ```
+
 **Logs and Debugging:**
 - API logs: `logs/api.log`
 - Prediction database: `logs/predictions.db`

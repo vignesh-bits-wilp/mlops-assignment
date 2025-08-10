@@ -1,3 +1,35 @@
-# Add patterns of files dvc should ignore, which could improve
-# the performance. Learn more at
-# https://dvc.org/doc/user-guide/dvcignore
+# DVC Cache directories - these cause Windows filename issues
+.dvc/cache/
+.dvc/tmp/
+.dvc/state/
+.dvc/state-journal/
+
+# Temporary DVC files
+*.dvc-tmp
+*.dvc-cache
+
+# DVC internal files that shouldn't be tracked
+.dvc/plots/
+.dvc/config.local
+.dvc/updater
+.dvc/updater.lock
+
+# OS-specific files that might cause issues
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3

@@ -126,9 +126,11 @@ dmypy.json
 .vscode/
 *.code-workspace
 
-# DVC
-.dvc/cache/
-.dvc/tmp/
+# DVC - Windows-friendly exclusions
+.dvc/
+!.dvc/config
+!.dvc/.gitignore
+!.dvcignore
 dvc.lock
 
 # Data files (common ML project exclusions)
