@@ -15,7 +15,7 @@ Endpoints:
 import mlflow
 import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, Response
 from pydantic import BaseModel
 import pandas as pd
 import os
@@ -26,6 +26,10 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 import uuid
+
+# Prometheus imports
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client.openmetrics.exposition import generate_latest as generate_latest_openmetrics
 
 # Try to import retraining system
 try:
@@ -59,6 +63,58 @@ logger = logging.getLogger(__name__)
 
 # Make sure logs directory exists (being extra careful)
 os.makedirs('logs', exist_ok=True)
+
+# Prometheus metrics
+REQUEST_COUNT = Counter(
+    'housing_api_requests_total',
+    'Total number of requests',
+    ['method', 'endpoint', 'status']
+)
+
+REQUEST_DURATION = Histogram(
+    'housing_api_request_duration_seconds',
+    'Request duration in seconds',
+    ['method', 'endpoint']
+)
+
+PREDICTION_COUNT = Counter(
+    'housing_api_predictions_total',
+    'Total number of predictions',
+    ['model_version', 'status']
+)
+
+PREDICTION_VALUE = Histogram(
+    'housing_api_prediction_value',
+    'Distribution of prediction values',
+    ['model_version']
+)
+
+MODEL_LOAD_TIME = Histogram(
+    'housing_api_model_load_duration_seconds',
+    'Time taken to load the model'
+)
+
+ACTIVE_REQUESTS = Gauge(
+    'housing_api_active_requests',
+    'Number of requests currently being processed'
+)
+
+MODEL_VERSION = Gauge(
+    'housing_api_model_version',
+    'Current model version in use',
+    ['model_name']
+)
+
+RETRAIN_COUNT = Counter(
+    'housing_api_retrain_total',
+    'Total number of retraining events',
+    ['status']
+)
+
+RETRAIN_DURATION = Histogram(
+    'housing_api_retrain_duration_seconds',
+    'Time taken for retraining'
+)
 
 def init_db():
     """Initialize SQLite database for storing predictions and events."""
@@ -173,6 +229,7 @@ except Exception as e:
     logger.info("Using fallback prediction method")
     model_available = False
     model = None
+    model_version = "fallback"
 
 
 # Pydantic models for request/response
@@ -277,6 +334,7 @@ def log_retrain_event(retrain_id: str, reason: str, success: bool,
 @app.get("/health")
 def health() -> dict:
     """Health check endpoint."""
+    REQUEST_COUNT.labels(method="GET", endpoint="/health", status="200").inc()
     return {
         "status": "ok",
         "model_available": model_available,
@@ -293,6 +351,10 @@ def predict(features: HousingFeatures, request: Request):
     request_id = str(uuid.uuid4())
     request_data = features.model_dump()
     
+    # Prometheus metrics
+    ACTIVE_REQUESTS.inc()
+    REQUEST_COUNT.labels(method="POST", endpoint="/predict", status="200").inc()
+    
     logger.info(f"Prediction request received - ID: {request_id}")
     
     try:
@@ -303,16 +365,23 @@ def predict(features: HousingFeatures, request: Request):
             pred = model.predict(df)
             prediction = float(pred[0])
             logger.info(f"MLflow model prediction: {prediction}")
+            PREDICTION_COUNT.labels(model_version=model_version, status="success").inc()
+            PREDICTION_VALUE.labels(model_version=model_version).observe(prediction)
         else:
             # Simple fallback - just use median income as rough estimate
             prediction = float(features.MedInc * 0.5)
             logger.info(f"Fallback prediction: {prediction}")
+            PREDICTION_COUNT.labels(model_version="fallback", status="success").inc()
+            PREDICTION_VALUE.labels(model_version="fallback").observe(prediction)
         
         response_time_ms = (time.time() - start_time) * 1000
         
         # Log successful prediction
         log_prediction(request_id, request_data, prediction, response_time_ms, "success")
         metrics_collector.record_request(response_time_ms, True)
+        
+        # Record request duration
+        REQUEST_DURATION.labels(method="POST", endpoint="/predict").observe(response_time_ms / 1000.0)
         
         return {
             "prediction": prediction,
@@ -325,6 +394,11 @@ def predict(features: HousingFeatures, request: Request):
         response_time_ms = (time.time() - start_time) * 1000
         error_msg = str(e)
         
+        # Prometheus metrics for failed prediction
+        REQUEST_COUNT.labels(method="POST", endpoint="/predict", status="500").inc()
+        PREDICTION_COUNT.labels(model_version=model_version, status="error").inc()
+        REQUEST_DURATION.labels(method="POST", endpoint="/predict").observe(response_time_ms / 1000.0)
+        
         logger.error(f"Prediction failed - ID: {request_id}, Error: {error_msg}")
         
         # Log failed prediction
@@ -332,6 +406,8 @@ def predict(features: HousingFeatures, request: Request):
         metrics_collector.record_request(response_time_ms, False)
         
         raise HTTPException(status_code=500, detail=error_msg)
+    finally:
+        ACTIVE_REQUESTS.dec()
 
 
 @app.get("/metrics")
@@ -383,6 +459,17 @@ def get_metrics():
     except Exception as e:
         logger.error(f"Failed to get metrics: {e}")
         return {"error": str(e)}
+
+
+@app.get("/metrics/prometheus")
+def prometheus_metrics():
+    """Prometheus metrics endpoint."""
+    try:
+        REQUEST_COUNT.labels(method="GET", endpoint="/metrics/prometheus", status="200").inc()
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    except Exception as e:
+        logger.error(f"Prometheus metrics error: {e}")
+        return Response(f"# Error: {e}", media_type="text/plain")
 
 
 @app.get("/logs/{limit}")
