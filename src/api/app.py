@@ -254,8 +254,60 @@ try:
             import glob
             
             # Find the latest run in mlruns
-            experiment_path = os.path.join("mlruns", "0")  # Default experiment ID
-            if os.path.exists(experiment_path):
+            # First, find the experiment directory (it might not be "0")
+            mlruns_path = "mlruns"
+            if os.path.exists(mlruns_path):
+                experiment_dirs = [d for d in os.listdir(mlruns_path) 
+                                 if os.path.isdir(os.path.join(mlruns_path, d)) 
+                                 and d != ".trash" and d != "models"]
+                
+                if experiment_dirs:
+                    # Use the first experiment directory found
+                    experiment_id = experiment_dirs[0]
+                    experiment_path = os.path.join(mlruns_path, experiment_id)
+                    logger.info(f"Found experiment directory: {experiment_path}")
+                    
+                    run_dirs = glob.glob(os.path.join(experiment_path, "*"))
+                    run_dirs = [d for d in run_dirs if os.path.isdir(d) and not d.endswith("meta.yaml")]
+                    
+                    if run_dirs:
+                        # Get the most recent run
+                        latest_run = max(run_dirs, key=os.path.getctime)
+                        model_path = os.path.join(latest_run, "artifacts", "model")
+                        
+                        if os.path.exists(model_path):
+                            logger.info(f"Loading model from run: {latest_run}")
+                            model = mlflow.pyfunc.load_model(model_path)
+                            model_available = True
+                            model_version = f"run_{os.path.basename(latest_run)}"
+                        else:
+                            raise Exception(f"Model artifacts not found in {model_path}")
+                    else:
+                        raise Exception("No runs found in mlruns directory")
+                else:
+                    raise Exception("No experiment directories found in mlruns")
+            else:
+                raise Exception("mlruns directory not found")
+    else:
+        # No registered models, try to load directly from mlruns directory
+        logger.info("No registered models found, trying to load from mlruns directory")
+        import os
+        import glob
+        
+        # Find the latest run in mlruns
+        # First, find the experiment directory (it might not be "0")
+        mlruns_path = "mlruns"
+        if os.path.exists(mlruns_path):
+            experiment_dirs = [d for d in os.listdir(mlruns_path) 
+                             if os.path.isdir(os.path.join(mlruns_path, d)) 
+                             and d != ".trash" and d != "models"]
+            
+            if experiment_dirs:
+                # Use the first experiment directory found
+                experiment_id = experiment_dirs[0]
+                experiment_path = os.path.join(mlruns_path, experiment_id)
+                logger.info(f"Found experiment directory: {experiment_path}")
+                
                 run_dirs = glob.glob(os.path.join(experiment_path, "*"))
                 run_dirs = [d for d in run_dirs if os.path.isdir(d) and not d.endswith("meta.yaml")]
                 
@@ -274,33 +326,7 @@ try:
                 else:
                     raise Exception("No runs found in mlruns directory")
             else:
-                raise Exception("mlruns directory not found")
-    else:
-        # No registered models, try to load directly from mlruns directory
-        logger.info("No registered models found, trying to load from mlruns directory")
-        import os
-        import glob
-        
-        # Find the latest run in mlruns
-        experiment_path = os.path.join("mlruns", "0")  # Default experiment ID
-        if os.path.exists(experiment_path):
-            run_dirs = glob.glob(os.path.join(experiment_path, "*"))
-            run_dirs = [d for d in run_dirs if os.path.isdir(d) and not d.endswith("meta.yaml")]
-            
-            if run_dirs:
-                # Get the most recent run
-                latest_run = max(run_dirs, key=os.path.getctime)
-                model_path = os.path.join(latest_run, "artifacts", "model")
-                
-                if os.path.exists(model_path):
-                    logger.info(f"Loading model from run: {latest_run}")
-                    model = mlflow.pyfunc.load_model(model_path)
-                    model_available = True
-                    model_version = f"run_{os.path.basename(latest_run)}"
-                else:
-                    raise Exception(f"Model artifacts not found in {model_path}")
-            else:
-                raise Exception("No runs found in mlruns directory")
+                raise Exception("No experiment directories found in mlruns")
         else:
             raise Exception("mlruns directory not found")
         
