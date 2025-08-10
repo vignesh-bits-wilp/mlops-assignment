@@ -183,17 +183,18 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: ./infra/Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-      continue-on-error: true
         
     - name: Build success message
       run: |
-        echo "✅ CI/CD Pipeline completed!"
-        echo "Note: Docker Hub push requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets."
+        echo "✅ Docker image built and pushed successfully!"
+        echo "Image: vigneshbitswilp/housing-api:master"
+        echo "Docker Hub: https://hub.docker.com/r/vigneshbitswilp/housing-api"
 
   deploy-local:
     needs: build-and-push
