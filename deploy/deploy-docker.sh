@@ -15,7 +15,7 @@ cleanup() {
 # Function to build the image
 build() {
     echo "🔨 Building Docker image..."
-    docker build -t housing-api .
+    docker build -t housing-api -f infra/Dockerfile .
     if [ $? -eq 0 ]; then
         echo "✅ Docker image built successfully!"
     else

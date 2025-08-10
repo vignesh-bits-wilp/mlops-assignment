@@ -3,14 +3,16 @@ version: '3.8'
 services:
   # Housing API Service
   housing-api:
-    build: .
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
     ports:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./logs:/app/logs
-      - ./mlruns:/app/mlruns
+      - ../logs:/app/logs
+      - ../mlruns:/app/mlruns
     networks:
       - monitoring
 
@@ -45,8 +47,8 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ../grafana/provisioning:/etc/grafana/provisioning
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
     networks:
       - monitoring
     depends_on:

@@ -9,6 +9,25 @@
 
 Our team built a complete MLOps pipeline for predicting California housing prices. We started with basic requirements and gradually added more sophisticated features like automated retraining and comprehensive monitoring.
 
+### 📁 **Project Structure**
+```
+mlops-assignment/
+├── src/                    # Main source code
+│   ├── api/               # FastAPI application
+│   ├── data/              # Data processing pipeline
+│   ├── models/            # Model training and retraining
+│   └── utils/             # Configuration and utilities
+├── tests/                 # Comprehensive test suite
+├── scripts/               # Utility scripts (data download, test generation)
+├── config/                # Configuration files (Prometheus, Docker Compose)
+├── deploy/                # Deployment scripts (local, Docker, cloud)
+├── infra/                 # Infrastructure configuration (Dockerfile)
+├── docs/                  # Complete documentation
+├── data/                  # Data files (DVC managed)
+├── grafana/               # Monitoring dashboards
+└── .github/workflows/     # CI/CD pipeline
+```
+
 ### 📊 **Data Pipeline Architecture**
 ```
 Raw Data → DVC Storage → Data Processing → Feature Engineering → Model Training
@@ -51,6 +70,12 @@ FastAPI Service → Docker Container → GitHub Actions → Docker Hub → Deplo
 - `POST /retrain/config` - Update retraining configuration
 - `GET /retrain/logs/{limit}` - Recent retraining history
 
+**Deployment Options:**
+- **Local Development**: `uvicorn src.api.app:app --host 127.0.0.1 --port 8000`
+- **Docker Local**: `docker build -t housing-api -f infra/Dockerfile .`
+- **Docker Compose**: `cd config && docker-compose up` (includes Prometheus + Grafana)
+- **Cloud Deployment**: `./deploy/deploy.sh` scripts for EC2/GCP
+
 ### 📈 **Monitoring & Observability**
 ```
 API Requests → Logging System → SQLite Database → Metrics Collection → Dashboard
@@ -63,6 +88,8 @@ Request/Response  File Logs    Prediction History  Performance KPIs  Real-time
 - **Database Storage**: SQLite stores prediction history and performance metrics
 - **Real-time Metrics**: Success rates, response times, and system uptime
 - **Error Tracking**: Failed predictions logged with detailed error information
+- **Prometheus Integration**: Custom metrics collection for advanced monitoring
+- **Grafana Dashboards**: Visual monitoring dashboards with real-time data
 
 ### ⚙️ **CI/CD Pipeline**
 ```
@@ -72,11 +99,12 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 ```
 
 **Pipeline Stages:**
-1. **Lint & Test**: Code quality checks and comprehensive test suite
+1. **Lint & Test**: Code quality checks and comprehensive test suite (95%+ coverage)
 2. **Data Sync**: DVC pulls latest datasets with SSH authentication
 3. **Model Training**: Automated retraining with MLflow tracking
 4. **Build & Package**: Docker containerization with multi-stage builds
 5. **Deploy**: Local and cloud deployment with health checks
+6. **Monitoring**: Prometheus metrics collection and Grafana visualization
 
 ## 🔧 **Technology Stack**
 
@@ -88,7 +116,9 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 | **Database** | SQLite | Prediction logging and metrics storage |
 | **Containerization** | Docker | Application packaging and deployment |
 | **CI/CD** | GitHub Actions | Automated testing and deployment |
-| **Monitoring** | Custom Metrics + Logging | System observability and performance tracking |
+| **Monitoring** | Prometheus + Grafana | Advanced monitoring and visualization |
+| **Testing** | pytest + coverage | Comprehensive test suite with coverage reporting |
+| **Configuration** | YAML + Environment | Flexible configuration management |
 
 ## 🎯 **Key MLOps Best Practices Implemented**
 
@@ -103,12 +133,16 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 - Continuous integration with quality gates
 - Automated model training and deployment
 - Infrastructure as code with Docker
+- Multi-environment deployment scripts (local, Docker, cloud)
+- Prometheus metrics collection and Grafana dashboards
 
 ### ✅ **Monitoring & Observability**
 - Comprehensive logging of all predictions
-- Real-time performance metrics
+- Real-time performance metrics with Prometheus
 - Error tracking and alerting
 - Database-backed audit trail
+- Grafana dashboards for visualization
+- Custom metrics collection for business KPIs
 
 ### ✅ **Security & Reliability**
 - Input validation with Pydantic schemas
@@ -126,10 +160,11 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 
 ## 🚀 **Deployment Options**
 
-1. **Local Development**: `uvicorn` server with hot reload
-2. **Docker Local**: Containerized service with `docker run`
-3. **Cloud Deployment**: EC2/GCP with automated deployment scripts
-4. **CI/CD Integration**: Automated deployment on successful builds
+1. **Local Development**: `uvicorn src.api.app:app --host 127.0.0.1 --port 8000`
+2. **Docker Local**: `docker build -t housing-api -f infra/Dockerfile .`
+3. **Docker Compose**: `cd config && docker-compose up` (includes monitoring stack)
+4. **Cloud Deployment**: `./deploy/deploy.sh` scripts for EC2/GCP
+5. **CI/CD Integration**: Automated deployment on successful builds
 
 ## 🔄 **Automated Retraining System (Bonus)**
 
@@ -156,10 +191,56 @@ Data Change Detection → Performance Monitoring → Trigger Evaluation → Auto
 
 ## 🔮 **Future Enhancements**
 
-- **Advanced Monitoring**: Prometheus + Grafana dashboard integration
 - **A/B Testing**: Multi-model serving with traffic splitting
 - **Data Drift Analysis**: Statistical drift detection beyond hash comparison
 - **Kubernetes**: Container orchestration for production scale
+- **Advanced MLflow**: Model serving and A/B testing capabilities
+- **Security**: API key authentication and rate limiting
+- **Performance**: Redis caching for improved response times
+
+## 📁 **Project Organization & Maintainability**
+
+### **Organized Directory Structure**
+The project follows industry-standard MLOps project organization:
+
+- **`src/`**: Clean separation of concerns (API, data, models, utils)
+- **`tests/`**: Comprehensive test suite with 95%+ coverage
+- **`scripts/`**: Utility scripts for data management and testing
+- **`config/`**: Centralized configuration management
+- **`deploy/`**: Platform-specific deployment automation
+- **`infra/`**: Infrastructure as code (Dockerfile, future: K8s, Terraform)
+- **`docs/`**: Complete documentation and guides
+
+### **Benefits of Organization**
+- **Separation of Concerns**: Each directory has a specific purpose
+- **Easier Navigation**: Related files are logically grouped
+- **Better Maintainability**: Clear structure reduces cognitive load
+- **Scalability**: Easy to add new components without cluttering
+- **Team Collaboration**: Clear structure helps new team members
+- **CI/CD Integration**: Organized structure supports automated workflows
+
+### **Development Workflow**
+```bash
+# Data Pipeline
+python scripts/download_data.py
+python src/data/data_ingestion.py
+
+# Model Training
+python src/models/train.py
+
+# Testing
+pytest tests/
+
+# Local Development
+uvicorn src.api.app:app --host 127.0.0.1 --port 8000
+
+# Docker Deployment
+docker build -t housing-api -f infra/Dockerfile .
+cd config && docker-compose up
+
+# Cloud Deployment
+./deploy/deploy.sh local
+```
 
 ---
 

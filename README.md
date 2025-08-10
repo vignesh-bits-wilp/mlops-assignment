@@ -13,6 +13,7 @@ cd mlops-assignment
 pip install -r requirements.txt
 
 # Download and process data
+python scripts/download_data.py
 python src/data/data_ingestion.py
 
 # Train models
@@ -54,7 +55,21 @@ mlops-assignment/
 │   ├── raw/              # Original dataset
 │   └── processed/        # Cleaned data
 ├── tests/                 # Test suite
+├── scripts/               # Utility scripts
+│   ├── download_data.py
+│   ├── generate_test_data.py
+│   └── cleanup_dvc_windows.ps1
+├── config/                # Configuration files
+│   ├── prometheus.yml
+│   └── docker-compose.yml
+├── deploy/                # Deployment scripts
+│   ├── deploy.sh
+│   ├── deploy-docker.sh
+│   └── deploy-docker.bat
+├── infra/                 # Infrastructure configuration
+│   └── Dockerfile
 ├── docs/                  # Documentation
+├── grafana/               # Grafana dashboards
 ├── .github/workflows/     # CI/CD pipeline
 └── mlruns/               # MLflow experiment tracking
 ```
@@ -164,7 +179,7 @@ The pipeline runs on every push to main and creates deployment artifacts.
 
 ```bash
 # Build image
-docker build -t housing-api .
+docker build -t housing-api -f infra/Dockerfile .
 
 # Run container
 docker run -p 8000:8000 housing-api

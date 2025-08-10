@@ -31,7 +31,7 @@ This will:
 
 ### 1. Build the Docker Image
 ```bash
-docker build -t housing-api .
+docker build -t housing-api -f infra/Dockerfile .
 ```
 
 ### 2. Run the Container

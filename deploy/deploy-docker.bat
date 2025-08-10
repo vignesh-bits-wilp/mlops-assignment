@@ -55,7 +55,7 @@ goto :eof
 
 :build
 echo 🔨 Building Docker image...
-docker build -t housing-api .
+docker build -t housing-api -f infra/Dockerfile .
 if %errorlevel% neq 0 (
     echo ❌ Docker build failed!
     exit /b 1
