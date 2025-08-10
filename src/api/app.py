@@ -64,57 +64,81 @@ logger = logging.getLogger(__name__)
 # Make sure logs directory exists (being extra careful)
 os.makedirs('logs', exist_ok=True)
 
-# Prometheus metrics
-REQUEST_COUNT = Counter(
-    'housing_api_requests_total',
-    'Total number of requests',
-    ['method', 'endpoint', 'status']
-)
+# Prometheus metrics with duplicate registration protection
+def _create_metrics():
+    """Create Prometheus metrics with duplicate registration protection."""
+    from prometheus_client import REGISTRY
+    
+    # Clear any existing metrics with the same names to prevent duplicates
+    metrics_to_remove = []
+    for metric in list(REGISTRY._collector_to_names.keys()):
+        if hasattr(metric, '_name') and metric._name.startswith('housing_api_'):
+            metrics_to_remove.append(metric)
+    
+    for metric in metrics_to_remove:
+        try:
+            REGISTRY.unregister(metric)
+        except KeyError:
+            pass  # Metric not registered
+    
+    # Create metrics
+    REQUEST_COUNT = Counter(
+        'housing_api_requests_total',
+        'Total number of requests',
+        ['method', 'endpoint', 'status']
+    )
+    
+    REQUEST_DURATION = Histogram(
+        'housing_api_request_duration_seconds',
+        'Request duration in seconds',
+        ['method', 'endpoint']
+    )
+    
+    PREDICTION_COUNT = Counter(
+        'housing_api_predictions_total',
+        'Total number of predictions',
+        ['model_version', 'status']
+    )
+    
+    PREDICTION_VALUE = Histogram(
+        'housing_api_prediction_value',
+        'Distribution of prediction values',
+        ['model_version']
+    )
+    
+    MODEL_LOAD_TIME = Histogram(
+        'housing_api_model_load_duration_seconds',
+        'Time taken to load the model'
+    )
+    
+    ACTIVE_REQUESTS = Gauge(
+        'housing_api_active_requests',
+        'Number of requests currently being processed'
+    )
+    
+    MODEL_VERSION = Gauge(
+        'housing_api_model_version',
+        'Current model version in use',
+        ['model_name']
+    )
+    
+    RETRAIN_COUNT = Counter(
+        'housing_api_retrain_total',
+        'Total number of retraining events',
+        ['status']
+    )
+    
+    RETRAIN_DURATION = Histogram(
+        'housing_api_retrain_duration_seconds',
+        'Time taken for retraining'
+    )
+    
+    return (REQUEST_COUNT, REQUEST_DURATION, PREDICTION_COUNT, PREDICTION_VALUE,
+            MODEL_LOAD_TIME, ACTIVE_REQUESTS, MODEL_VERSION, RETRAIN_COUNT, RETRAIN_DURATION)
 
-REQUEST_DURATION = Histogram(
-    'housing_api_request_duration_seconds',
-    'Request duration in seconds',
-    ['method', 'endpoint']
-)
-
-PREDICTION_COUNT = Counter(
-    'housing_api_predictions_total',
-    'Total number of predictions',
-    ['model_version', 'status']
-)
-
-PREDICTION_VALUE = Histogram(
-    'housing_api_prediction_value',
-    'Distribution of prediction values',
-    ['model_version']
-)
-
-MODEL_LOAD_TIME = Histogram(
-    'housing_api_model_load_duration_seconds',
-    'Time taken to load the model'
-)
-
-ACTIVE_REQUESTS = Gauge(
-    'housing_api_active_requests',
-    'Number of requests currently being processed'
-)
-
-MODEL_VERSION = Gauge(
-    'housing_api_model_version',
-    'Current model version in use',
-    ['model_name']
-)
-
-RETRAIN_COUNT = Counter(
-    'housing_api_retrain_total',
-    'Total number of retraining events',
-    ['status']
-)
-
-RETRAIN_DURATION = Histogram(
-    'housing_api_retrain_duration_seconds',
-    'Time taken for retraining'
-)
+# Create metrics
+(REQUEST_COUNT, REQUEST_DURATION, PREDICTION_COUNT, PREDICTION_VALUE,
+ MODEL_LOAD_TIME, ACTIVE_REQUESTS, MODEL_VERSION, RETRAIN_COUNT, RETRAIN_DURATION) = _create_metrics()
 
 def init_db():
     """Initialize SQLite database for storing predictions and events."""
