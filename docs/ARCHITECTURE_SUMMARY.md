@@ -5,11 +5,11 @@
 **Dataset**: California Housing Dataset (Regression Problem)  
 **Submission**: August 2025  
 
-## 🏗️ System Architecture Overview
+## System Architecture Overview
 
 Our team built a complete MLOps pipeline for predicting California housing prices. We started with basic requirements and gradually added more sophisticated features like automated retraining and comprehensive monitoring.
 
-### 📁 **Project Structure**
+### **Project Structure**
 ```
 mlops-assignment/
 ├── src/                    # Main source code
@@ -28,7 +28,7 @@ mlops-assignment/
 └── .github/workflows/     # CI/CD pipeline
 ```
 
-### 📊 **Data Pipeline Architecture**
+### **Data Pipeline Architecture**
 ```
 Raw Data → DVC Storage → Data Processing → Feature Engineering → Model Training
     ↓              ↓            ↓               ↓               ↓
@@ -40,7 +40,7 @@ GitHub      Remote Repo    Validation    MLflow Tracking   Model Registry
 - **Data Processing**: Automated cleaning and feature engineering with change detection
 - **Validation**: Pydantic schemas ensure data quality and API input validation
 
-### 🤖 **Model Development & Tracking**
+### **Model Development & Tracking**
 ```
 Multiple Models → MLflow Experiments → Model Comparison → Best Model Selection → Registry
      ↓                    ↓                  ↓                  ↓            ↓
@@ -53,7 +53,7 @@ Linear/Tree         Hyperparameters      R² Metrics        Auto-Selection   Ver
 - **Model Registry**: Automated best model selection and versioning
 - **Performance**: Current best model achieves R² = 0.600
 
-### 🚀 **API & Deployment Architecture**
+### **API & Deployment Architecture**
 ```
 FastAPI Service → Docker Container → GitHub Actions → Docker Hub → Deployment
       ↓                ↓                  ↓            ↓          ↓
@@ -64,6 +64,7 @@ FastAPI Service → Docker Container → GitHub Actions → Docker Hub → Deplo
 - `GET /health` - System health and model status
 - `POST /predict` - Housing price predictions with logging
 - `GET /metrics` - Real-time monitoring metrics
+- `GET /metrics/prometheus` - Prometheus exposition format for scraping
 - `GET /logs/{limit}` - Recent prediction history
 - `GET /retrain/status` - Retraining system status and configuration
 - `POST /retrain/trigger` - Manual model retraining trigger
@@ -76,7 +77,7 @@ FastAPI Service → Docker Container → GitHub Actions → Docker Hub → Deplo
 - **Docker Compose**: `cd config && docker-compose up` (includes Prometheus + Grafana)
 - **Cloud Deployment**: `./deploy/deploy.sh` scripts for EC2/GCP
 
-### 📈 **Monitoring & Observability**
+### **Monitoring & Observability**
 ```
 API Requests → Logging System → SQLite Database → Metrics Collection → Dashboard
      ↓             ↓               ↓                ↓                ↓
@@ -91,7 +92,7 @@ Request/Response  File Logs    Prediction History  Performance KPIs  Real-time
 - **Prometheus Integration**: Custom metrics collection for advanced monitoring
 - **Grafana Dashboards**: Visual monitoring dashboards with real-time data
 
-### ⚙️ **CI/CD Pipeline**
+### **CI/CD Pipeline**
 ```
 Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
     ↓           ↓            ↓        ↓       ↓         ↓
@@ -106,7 +107,7 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 5. **Deploy**: Local and cloud deployment with health checks
 6. **Monitoring**: Prometheus metrics collection and Grafana visualization
 
-## 🔧 **Technology Stack**
+## **Technology Stack**
 
 | **Category** | **Technology** | **Purpose** |
 |--------------|----------------|-------------|
@@ -120,15 +121,15 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 | **Testing** | pytest + coverage | Comprehensive test suite with coverage reporting |
 | **Configuration** | YAML + Environment | Flexible configuration management |
 
-## 🎯 **Key MLOps Best Practices Implemented**
+## **Key MLOps Best Practices Implemented**
 
-### ✅ **Version Control & Reproducibility**
+### **Version Control & Reproducibility**
 - Git for code versioning with clean commit history
 - DVC for data versioning with remote storage
 - MLflow for experiment and model versioning
 - Containerization for environment consistency
 
-### ✅ **Automation & CI/CD**
+### **Automation & CI/CD**
 - Automated testing with 95%+ code coverage
 - Continuous integration with quality gates
 - Automated model training and deployment
@@ -136,7 +137,7 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 - Multi-environment deployment scripts (local, Docker, cloud)
 - Prometheus metrics collection and Grafana dashboards
 
-### ✅ **Monitoring & Observability**
+### **Monitoring & Observability**
 - Comprehensive logging of all predictions
 - Real-time performance metrics with Prometheus
 - Error tracking and alerting
@@ -144,13 +145,13 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 - Grafana dashboards for visualization
 - Custom metrics collection for business KPIs
 
-### ✅ **Security & Reliability**
+### **Security & Reliability**
 - Input validation with Pydantic schemas
 - Secure SSH-based data access
 - Error handling and graceful degradation
 - Health checks and monitoring endpoints
 
-## 📊 **System Performance**
+## **System Performance**
 
 - **Model Performance**: R² Score = 0.600 (DecisionTreeRegressor)
 - **API Response Time**: ~100ms average
@@ -158,7 +159,7 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 - **Data Processing**: Handles 20,640 housing records efficiently
 - **Scalability**: Containerized for horizontal scaling
 
-## 🚀 **Deployment Options**
+## **Deployment Options**
 
 1. **Local Development**: `uvicorn src.api.app:app --host 127.0.0.1 --port 8000`
 2. **Docker Local**: `docker build -t housing-api -f infra/Dockerfile .`
@@ -166,7 +167,7 @@ Code Push → GitHub Actions → Lint/Test → Build → Docker Push → Deploy
 4. **Cloud Deployment**: `./deploy/deploy.sh` scripts for EC2/GCP
 5. **CI/CD Integration**: Automated deployment on successful builds
 
-## 🔄 **Automated Retraining System (Bonus)**
+## **Automated Retraining System (Bonus)**
 
 ### **Intelligent Retraining Triggers**
 ```
@@ -189,7 +190,7 @@ Data Change Detection → Performance Monitoring → Trigger Evaluation → Auto
 - **Frequency Limits**: Maximum once every 6 hours (configurable)
 - **Auto-Enable**: Toggleable automated retraining system
 
-## 🔮 **Future Enhancements**
+## **Future Enhancements**
 
 - **A/B Testing**: Multi-model serving with traffic splitting
 - **Data Drift Analysis**: Statistical drift detection beyond hash comparison
@@ -198,7 +199,7 @@ Data Change Detection → Performance Monitoring → Trigger Evaluation → Auto
 - **Security**: API key authentication and rate limiting
 - **Performance**: Redis caching for improved response times
 
-## 📁 **Project Organization & Maintainability**
+## **Project Organization & Maintainability**
 
 ### **Organized Directory Structure**
 The project follows industry-standard MLOps project organization:
